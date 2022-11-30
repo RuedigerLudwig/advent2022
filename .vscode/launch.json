@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Advent",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "program": "advent"
+        },
+        {
+            "name": "Python: Advent with Args",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "program": "advent",
+            "args": [
+                "${input:dayToRun}"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "dayToRun",
+            "type": "promptString",
+            "description": "Which day should be run?"
+        }
+    ]
+}
