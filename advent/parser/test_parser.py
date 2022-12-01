@@ -1,4 +1,4 @@
-from .parser import P
+from .parser import P  # type: ignore
 import pytest
 
 
