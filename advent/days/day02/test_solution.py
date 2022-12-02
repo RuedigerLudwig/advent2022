@@ -33,13 +33,13 @@ def test_round1():
 
 def test_round2():
     input = "A Y"
-    expected = 4
-    opponent, player = Result.parse(input)
-    assert player.score(opponent) == expected
+    expected = Shape.Rock
+    opponent, result = Result.parse(input)
+    assert result.player_shape(opponent) == expected
 
 
 def test_round3():
     input = "B X"
     expected = 1
-    opponent, player = Result.parse(input)
-    assert player.score(opponent) == expected
+    opponent, result = Result.parse(input)
+    assert result.player_shape(opponent).score(opponent) == expected

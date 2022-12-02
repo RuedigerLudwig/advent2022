@@ -11,7 +11,7 @@ def part1(lines: Iterator[str]) -> int:
 
 
 def part2(lines: Iterator[str]) -> int:
-    return sum(result.score(opponent)
+    return sum(result.player_shape(opponent).score(opponent)
                for opponent, result in (Result.parse(line) for line in lines))
 
 
@@ -187,9 +187,9 @@ class Result(Enum):
             case 'Z': return Result.Win
             case _: raise Exception(f"Unknown char : {char}")
 
-    def score(self, other: Shape) -> int:
-        """ The score we get by the given shape and the expected result """
+    def player_shape(self, other: Shape) -> Shape:
+        """ The shape the player must choose to get the expected result"""
         match self:
-            case Result.Lose: return other.prev().score(other)
-            case Result.Draw: return other.score(other)
-            case Result.Win: return other.next().score(other)
+            case Result.Lose: return other.prev()
+            case Result.Draw: return other
+            case Result.Win: return other.next()
