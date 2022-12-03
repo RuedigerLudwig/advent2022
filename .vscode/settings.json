@@ -1,22 +1,23 @@
 {
-    "python.terminal.activateEnvInCurrentTerminal": true,
-    "python.analysis.diagnosticMode": "workspace",
-    "python.linting.flake8Enabled": true,
-    "python.analysis.typeCheckingMode": "strict",
     "files.exclude": {
         ".venv/": true,
         "**/__pycache__/": true,
         "**/.pytest_cache/": true,
         "**/*.egg-info/": true
     },
-    "python.testing.pytestArgs": [],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.typeCheckingMode": "strict",
     "python.formatting.autopep8Args": [
         "--max-line-length",
         "100",
         "--aggressive",
         "--ignore",
         "W503"
-    ]
+    ],
+    "python.linting.flake8Enabled": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.testing.pytestArgs": [],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }
