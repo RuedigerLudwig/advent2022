@@ -31,8 +31,7 @@ class Range:
 
     def overlap(self, other: Range) -> bool:
         """ Check if this range obverlaps with the other """
-        return (self.start >= other.start and self.start <= other.end) or (
-            other.start >= self.start and other.start <= self.end)
+        return self.start <= other.end and other.start <= self.end
 
 
 @dataclass(slots=True, frozen=True)
