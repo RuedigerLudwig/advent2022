@@ -34,7 +34,7 @@ def test_parse_line2():
 def test_drawing():
     data = utils.read_data(day_num, 'test01.txt')
     expected = ["ZN", "MCD", "P"]
-    result = Crane.parse_drawing(data)
+    result = Crane.parse_stacks(data)
     assert result == expected
 
 
@@ -54,25 +54,17 @@ def test_parse_all():
     assert result == expected
 
 
-def test_step():
-    data = utils.read_data(day_num, 'test01.txt')
-    state = Crane.parse(data, True)
-    expected = ["ZND", "MC", "P"]
-    result = state.moves[0].do_move(state.stacks, False)
-    assert result == expected
-
-
 def test_all_moves():
     data = utils.read_data(day_num, 'test01.txt')
-    state = Crane.parse(data, False)
+    crane = Crane.parse(data, False)
     expected = ["C", "M", "PDNZ"]
-    result = state.perform_all_moves()
+    result = crane.perform_all_moves()
     assert result == expected
 
 
 def test_all_moves9001():
     data = utils.read_data(day_num, 'test01.txt')
-    state = Crane.parse(data, True)
+    crane = Crane.parse(data, True)
     expected = ["M", "C", "PZND"]
-    result = state.perform_all_moves()
+    result = crane.perform_all_moves()
     assert result == expected

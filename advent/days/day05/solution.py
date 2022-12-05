@@ -32,14 +32,17 @@ class Move:
     move_parser: ClassVar[P[tuple[int, int, int]]] = P.seq(amount_parser, from_parser, to_parser)
 
     @staticmethod
-    def parse(line: str) -> Move:
-        amount, frm, to = Move.move_parser.parse(line).get()
+    def parse(line: str) -> Move | None:
+        parsed = Move.move_parser.parse(line)
+        if parsed.is_fail():
+            return None
+        amount, frm, to = parsed.get()
         return Move(amount, frm - 1, to - 1)
 
     def do_move(self, crates: list[str], as_9001: bool) -> list[str]:
         """
         Moves the given crates by the provided move. Will fail if there are not enough crates
-        in the from stack
+        in the stack to take crates off
         """
         if as_9001:
             crates[self.to] += crates[self.frm][-self.amount:]
@@ -64,12 +67,11 @@ class Crane:
         return Crane.crate_row_parser.parse(line).get_or(None)
 
     @staticmethod
-    def parse_drawing(lines: Iterator[str]) -> list[str]:
+    def parse_stacks(lines: Iterator[str]) -> list[str]:
         stacks: list[str] = []
         for line in lines:
             crate_row = Crane.parse_crate_row(line)
             if crate_row is None:
-                next(lines)  # Empty line
                 return stacks
 
             if len(stacks) < len(crate_row):
@@ -83,8 +85,8 @@ class Crane:
 
     @staticmethod
     def parse(lines: Iterator[str], is_9001: bool) -> Crane:
-        drawing = Crane.parse_drawing(lines)
-        moves = [Move.parse(line) for line in lines]
+        drawing = Crane.parse_stacks(lines)
+        moves = [p for p in (Move.parse(line) for line in lines) if p is not None]
         return Crane(drawing, moves, is_9001)
 
     @staticmethod
