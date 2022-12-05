@@ -1,4 +1,4 @@
-from .parser import P  # type: ignore
+from advent.parser.parser import P
 import pytest
 
 

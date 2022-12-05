@@ -1,6 +1,6 @@
 from advent.common import utils
 
-from .solution import day_num, part1, part2, State
+from .solution import Move, day_num, part1, part2, Crane
 
 
 def test_part1():
@@ -20,57 +20,59 @@ def test_part2():
 def test_parse_line():
     input = "    [D]    "
     expected = [None, 'D', None]
-    result = State.parse_crate_line(input)
+    result = Crane.parse_crate_row(input)
     assert result == expected
 
 
 def test_parse_line2():
     input = "[Z] [M] [P]"
     expected = ["Z", 'M', "P"]
-    result = State.parse_crate_line(input)
+    result = Crane.parse_crate_row(input)
     assert result == expected
 
 
 def test_drawing():
     data = utils.read_data(day_num, 'test01.txt')
     expected = ["ZN", "MCD", "P"]
-    result = State.parse_drawing(data)
+    result = Crane.parse_drawing(data)
     assert result == expected
 
 
 def test_parse_move():
     input = "move 1 from 2 to 1"
-    expected = 1, 1, 0
-    result = State.parse_move(input)
+    expected = Move(1, 1, 0)
+    result = Move.parse(input)
     assert result == expected
 
 
 def test_parse_all():
     data = utils.read_data(day_num, 'test01.txt')
-    expected = State(["ZN", "MCD", "P"], [(1, 1, 0), (3, 0, 2), (2, 1, 0), (1, 0, 1)])
-    result = State.parse(data)
+    expected = Crane(
+        ["ZN", "MCD", "P"],
+        [Move(1, 1, 0), Move(3, 0, 2), Move(2, 1, 0), Move(1, 0, 1)], True)
+    result = Crane.parse(data, True)
     assert result == expected
 
 
 def test_step():
     data = utils.read_data(day_num, 'test01.txt')
-    state = State.parse(data)
+    state = Crane.parse(data, True)
     expected = ["ZND", "MC", "P"]
-    result = State.do_move9000(state.crates, state.moves[0])
+    result = state.moves[0].do_move(state.stacks, False)
     assert result == expected
 
 
 def test_all_moves():
     data = utils.read_data(day_num, 'test01.txt')
-    state = State.parse(data)
+    state = Crane.parse(data, False)
     expected = ["C", "M", "PDNZ"]
-    result = state.all_moves9000()
+    result = state.perform_all_moves()
     assert result == expected
 
 
 def test_all_moves9001():
     data = utils.read_data(day_num, 'test01.txt')
-    state = State.parse(data)
+    state = Crane.parse(data, True)
     expected = ["M", "C", "PZND"]
-    result = state.all_moves9001()
+    result = state.perform_all_moves()
     assert result == expected
