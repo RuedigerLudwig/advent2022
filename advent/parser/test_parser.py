@@ -130,7 +130,7 @@ def test_seq_seq():
 
 def test_not():
     input = 'a'
-    parser = P.snd(P.no_match(P.is_char('!'), 'found !'), P.is_char('a'))
+    parser = P.snd(P.no_match(P.is_char('!')), P.is_char('a'))
     expected = 'a'
     result = parser.parse(input).get()
     assert result == expected
@@ -138,3 +138,30 @@ def test_not():
     input2 = '!'
     result2 = parser.parse(input2)
     assert result2.is_fail()
+
+
+def test_multi():
+    input = 'aa'
+    parser = P.is_char('a').many()
+    expected = [['a', 'a'], ['a'], []]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_either():
+    input = 'aab'
+    parser = P.either(
+        P.seq(
+            P.is_char('a').many(), P.string('b')), P.seq(
+            P.string('a'), P.string('ab')))
+    expected = [(['a', 'a'], 'b'), ('a', 'ab')]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_seq_eof():
+    input = 'aa'
+    parser = P.seq(P.is_char('a').many(), P.eof())
+    expected = [(['a', 'a'], ())]
+    result = list(parser.parse_multi(input))
+    assert result == expected
