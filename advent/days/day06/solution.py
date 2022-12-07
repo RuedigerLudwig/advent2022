@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from itertools import product
+from itertools import combinations
 from typing import Iterator
 
 day_num = 6
@@ -20,11 +20,12 @@ def marker(line: str, length: int) -> int:
     Raises Exception if no marker was found
     """
     for pos in range(length, len(line)):
-        identical = 0
-        for a, b in product(line[pos - length:pos], repeat=2):
+        found = False
+        for a, b in combinations(line[pos - length:pos], 2):
             if a == b:
-                identical += 1
-        if identical == length:
+                found = True
+                break
+        if not found:
             return pos
 
     raise Exception("No marker found")
