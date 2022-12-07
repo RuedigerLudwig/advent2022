@@ -63,18 +63,11 @@ class P(Generic[T]):
 
     @staticmethod
     def pure(value: T) -> P[T]:
-        def inner(parserPos: ParserInput) -> ParserResult[T]:
-            yield (parserPos, value)
-        return P(inner)
+        return P(lambda pp: iter([(pp, value)]))
 
     @staticmethod
     def fail() -> P[Any]:
-        def inner(_: ParserInput) -> ParserResult[Any]:
-            if False:
-                yield
-            pass
-
-        return P(inner)
+        return P(lambda _: iter([]))
 
     @staticmethod
     def _fix(p1: Callable[[P[Any]], P[T]]) -> P[T]:
@@ -97,12 +90,14 @@ class P(Generic[T]):
         return P(inner)
 
     def safe_fmap(self, map_func: Callable[[T], TR]) -> P[TR]:
-        def inner(value: T) -> P[TR]:
-            try:
-                return P.pure(map_func(value))
-            except Exception:
-                return P.fail()
-        return self.bind(inner)
+        def inner(parserPos: ParserInput) -> ParserResult[TR]:
+            for pp, v in self.func(parserPos):
+                try:
+                    yield pp, map_func(v)
+                except Exception:
+                    pass
+
+        return P(inner)
 
     def replace(self, value: TR) -> P[TR]:
         return self.fmap(lambda _: value)
