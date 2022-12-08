@@ -121,7 +121,7 @@ class P(Generic[T]):
     def many(self) -> P[list[T]]:
         return P.either(self.some(), P.pure([]))
 
-    def satisfies(self, pred: Callable[[T], bool], failtext: str) -> P[T]:
+    def satisfies(self, pred: Callable[[T], bool]) -> P[T]:
         return self.bind(lambda v: P.pure(v) if pred(v) else P.fail())
 
     def optional(self) -> P[T | None]:
@@ -150,18 +150,18 @@ class P(Generic[T]):
 
         return P(inner)
 
-    @ staticmethod
+    @staticmethod
     def map2(p1: P[T1], p2: P[T2], func: Callable[[T1, T2], TR]) -> P[TR]:
         return p1.bind(lambda v1: p2.fmap(lambda v2: func(v1, v2)))
 
-    @ staticmethod
+    @staticmethod
     def map3(p1: P[T1], p2: P[T2], p3: P[T3], func: Callable[[T1, T2, T3], TR]) -> P[TR]:
         return p1.bind(
             lambda v1: p2.bind(
                 lambda v2: p3.fmap(
                     lambda v3: func(v1, v2, v3))))
 
-    @ staticmethod
+    @staticmethod
     def map4(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
              func: Callable[[T1, T2, T3, T4], TR]) -> P[TR]:
         return p1.bind(
@@ -170,7 +170,7 @@ class P(Generic[T]):
                     lambda v3: p4.fmap(
                         lambda v4: func(v1, v2, v3, v4)))))
 
-    @ staticmethod
+    @staticmethod
     def map5(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], p5: P[T5],
              func: Callable[[T1, T2, T3, T4, T5], TR]) -> P[TR]:
         return p1.bind(
@@ -180,56 +180,56 @@ class P(Generic[T]):
                         lambda v4: p5.fmap(
                             lambda v5: func(v1, v2, v3, v4, v5))))))
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def seq(p1: P[T1], p2: P[T2], /) -> P[tuple[T1, T2]]:
         ...
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def seq(p1: P[T1], p2: P[T2], p3: P[T3], /) -> P[tuple[T1, T2, T3]]:
         ...
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def seq(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /) -> P[tuple[T1, T2, T3, T4]]:
         ...
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def seq(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
             p5: P[T5], /) -> P[tuple[T1, T2, T3, T4, T5]]:
         ...
 
-    @ staticmethod
+    @staticmethod
     def seq(*ps: P[Any]) -> P[tuple[Any, ...]]:
         return reduce(lambda p, x: x.bind(
             lambda a: p.fmap(lambda b: chain([a], b))),
             list(ps)[::-1], P.pure(iter([]))).fmap(tuple)
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def sep_seq(p1: P[T1], p2: P[T2], /, *, sep: P[Any]) -> P[tuple[T1, T2]]:
         ...
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def sep_seq(p1: P[T1], p2: P[T2], p3: P[T3], /, *, sep: P[Any]) -> P[tuple[T1, T2, T3]]:
         ...
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def sep_seq(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /,
                 *, sep: P[Any]) -> P[tuple[T1, T2, T3, T4]]:
         ...
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def sep_seq(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
                 p5: P[T5], /, *, sep: P[Any]) -> P[tuple[T1, T2, T3, T4, T5]]:
         ...
 
-    @ staticmethod
+    @staticmethod
     def sep_seq(*ps: P[Any], sep: P[Any]) -> P[tuple[Any, ...]]:
         first, *rest = list(ps)
         return P.map2(first,
@@ -238,7 +238,7 @@ class P(Generic[T]):
                           rest[::-1], P.pure(iter([]))),
                       lambda f, r: (f,) + tuple(r))
 
-    @ staticmethod
+    @staticmethod
     def either(p1: P[T1], p2: P[T2], /) -> P[T1 | T2]:
         def inner(parserPos: ParserInput):
             yield from p1.func(parserPos)
@@ -246,102 +246,103 @@ class P(Generic[T]):
 
         return P(inner)
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def choice(p1: P[T1], p2: P[T2], p3: P[T3], /) -> P[T1 | T2 | T3]:
         ...
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def choice(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /) -> P[T1 | T2 | T3 | T4]:
         ...
 
-    @ staticmethod
-    @ overload
+    @staticmethod
+    @overload
     def choice(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
                p5: P[T5], /) -> P[T1 | T2 | T3 | T4 | T5]:
         ...
 
-    @ staticmethod
+    @staticmethod
     def choice(*ps: P[Any]) -> P[Any]:
-        return reduce(P.either, ps, P.fail())
+        def inner(parserPos: ParserInput) -> Iterator[Any]:
+            for p in ps:
+                yield from p.func(parserPos)
+        return P(inner)
 
-    @ staticmethod
-    def choice_same(*ps: P[T]) -> P[T]:
+    @staticmethod
+    def choice2(*ps: P[T]) -> P[T]:
         return P.choice(*ps)
 
-    @ staticmethod
-    def any_char() -> P[str]:
+    @staticmethod
+    def one_char() -> P[str]:
         def inner(parserPos: ParserInput) -> ParserResult[str]:
             if not parserPos.is_eof():
                 yield parserPos.step()
         return P(inner)
 
-    @ staticmethod
+    @staticmethod
     def eof() -> P[tuple[()]]:
         def inner(parserPos: ParserInput) -> ParserResult[tuple[()]]:
             if parserPos.is_eof():
                 yield parserPos, ()
         return P(inner)
 
-    @ staticmethod
+    @staticmethod
+    def char_func(cmp: Callable[[str], bool]) -> P[str]:
+        return P.one_char().satisfies(cmp)
+
+    @staticmethod
     def is_char(cmp: str) -> P[str]:
-        return P.any_char().satisfies(lambda c: c == cmp, f'match {cmp}')
+        return P.char_func(lambda c: c == cmp)
 
     @staticmethod
     def is_not_char(s: str) -> P[tuple[()]]:
         return P.no_match(P.is_char(s))
 
-    @ staticmethod
-    def char_by_func(cmp: Callable[[str], bool], failtext: str) -> P[str]:
-        return P.any_char().satisfies(cmp, failtext)
-
-    @ staticmethod
+    @staticmethod
     def string(s: str) -> P[str]:
         return P.seq(*map(P.is_char, s)).replace(s)
 
-    @ staticmethod
+    @staticmethod
     def one_of(s: str) -> P[str]:
-        return P.char_by_func(lambda c: c in s, f'one of {s}')
+        return P.char_func(lambda c: c in s)
 
-    @ staticmethod
+    @staticmethod
     def any_decimal() -> P[str]:
-        return P.char_by_func(lambda c: c.isdecimal(), 'decimal')
+        return P.char_func(lambda c: c.isdecimal())
 
-    @ staticmethod
+    @staticmethod
     def is_decimal(num: int) -> P[str]:
-        return P.any_decimal().bind(
-            lambda c: P.pure(c) if unicodedata.decimal(c) == num else P.fail())
+        return P.any_decimal().satisfies(lambda c: unicodedata.decimal(c) == num)
 
-    @ staticmethod
+    @staticmethod
     def is_not_decimal(num: int) -> P[str]:
-        return P.any_decimal().bind(
-            lambda c: P.pure(c) if unicodedata.decimal(c) != num else P.fail())
+        return P.any_decimal().satisfies(lambda c: unicodedata.decimal(c) != num)
 
-    @ staticmethod
+    @staticmethod
     def lower() -> P[str]:
-        return P.char_by_func(lambda c: c.islower(), 'lower')
+        return P.char_func(lambda c: c.islower())
 
-    @ staticmethod
+    @staticmethod
     def upper() -> P[str]:
-        return P.char_by_func(lambda c: c.isupper(), 'upper')
+        return P.char_func(lambda c: c.isupper())
 
-    @ staticmethod
+    @staticmethod
+    def space() -> P[str]:
+        return P.char_func(lambda c: c.isspace())
+
+    @staticmethod
     def joined(p1: P[str]) -> P[str]:
         return p1.many().fmap(lambda cs: ''.join(cs))
 
-    @ staticmethod
-    def space() -> P[str]:
-        return P.char_by_func(lambda c: c.isspace(), 'space')
-
-    @ staticmethod
+    @staticmethod
     def unsigned() -> P[int]:
         return P.either(P.fst(P.is_decimal(0), P.no_match(P.any_decimal())),
                         P.map2(P.is_not_decimal(0), P.any_decimal().many(),
                                lambda f, s: f + ''.join(s))
                         ).fmap(int)
 
-    @ staticmethod
+    @staticmethod
     def signed() -> P[int]:
         return P.map2(P.one_of('+-').optional(), P.unsigned(),
                       lambda sign, num: num if sign != '-' else -num)

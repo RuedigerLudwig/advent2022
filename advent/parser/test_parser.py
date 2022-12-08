@@ -112,7 +112,7 @@ def test_choice2():
 
 def test_seq():
     input = '1234'
-    parser = P.seq(P.any_char(), P.any_char(), P.any_char(), P.any_char())
+    parser = P.seq(P.one_char(), P.one_char(), P.one_char(), P.one_char())
     expected = ('1', '2', '3', '4')
     result = parser.parse(input).get()
     assert result == expected
@@ -120,7 +120,7 @@ def test_seq():
 
 def test_seq_seq():
     input = '1,2,3,4'
-    digit = P.char_by_func(lambda c: c.isdigit(), "")
+    digit = P.char_func(lambda c: c.isdigit(), )
     parser = P.sep_seq(digit, digit, digit, digit, sep=P.is_char(','))
 
     expected = ('1', '2', '3', '4')
@@ -163,5 +163,21 @@ def test_seq_eof():
     input = 'aa'
     parser = P.seq(P.is_char('a').many(), P.eof())
     expected = [(['a', 'a'], ())]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_optional():
+    input = '12'
+    parser = P.seq(P.is_char('1').optional(), P.unsigned())
+    expected = [('1', 2), (None, 12), (None, 1)]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_choice():
+    input = '1'
+    parser = P.choice(P.is_char('1'), P.is_char('b'), P.unsigned())
+    expected = ['1', 1]
     result = list(parser.parse_multi(input))
     assert result == expected

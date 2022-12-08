@@ -62,7 +62,7 @@ class Success(Result[S]):
         return False
 
     def fmap(self, func: Callable[[S], S2]) -> Result[S2]:
-        return Result.of(func(self.value))  # type: ignore
+        return Result.of(func(self.value))
 
     def bind(self, func: Callable[[S], Result[S2]]) -> Result[S2]:
         return func(self.value)
