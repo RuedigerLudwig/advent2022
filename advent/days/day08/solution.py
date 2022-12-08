@@ -7,63 +7,60 @@ day_num = 8
 
 
 def part1(lines: Iterator[str]) -> int:
-    return Trees.parse(lines).count_visible()
+    return Forest.parse(lines).count_visible_trees()
 
 
 def part2(lines: Iterator[str]) -> int:
-    return Trees.parse(lines).max_scenic_score()
+    return Forest.parse(lines).max_scenic_score()
 
 
 @dataclass(slots=True)
-class Trees:
+class Forest:
     trees: list[list[int]]
     width: int
     height: int
 
     @staticmethod
-    def parse(lines: Iterator[str]) -> Trees:
+    def parse(lines: Iterator[str]) -> Forest:
         trees = [[int(tree) for tree in line] for line in lines]
-        return Trees(trees, len(trees[0]), len(trees))
+        return Forest(trees, len(trees[0]), len(trees))
 
-    def count_visible(self) -> int:
-        visible = [[True] * self.width]
-        for _ in range(self.height - 2):
-            visible += [[True] + [False] * (self.width - 2) + [True]]
-        visible += [[True] * self.width]
+    def count_visible_trees(self) -> int:
+        visible: set[tuple[int, int]] = set()
 
-        # From Up
+        # From Above
         mx = self.trees[0].copy()
         for y in range(1, self.height - 1):
             for x in range(1, self.width - 1):
                 if self.trees[y][x] > mx[x]:
                     mx[x] = self.trees[y][x]
-                    visible[y][x] = True
+                    visible.add((x, y))
 
-        # From Down
+        # From Below
         mx = self.trees[-1].copy()
         for y in range(self.height - 2, 0, -1):
             for x in range(1, self.width - 1):
                 if self.trees[y][x] > mx[x]:
                     mx[x] = self.trees[y][x]
-                    visible[y][x] = True
+                    visible.add((x, y))
 
         # From Left
-        mx = [self.trees[y][0] for y in range(self.height)]
+        mx = [row[0] for row in self.trees]
         for x in range(1, self.width - 1):
             for y in range(1, self.height - 1):
                 if self.trees[y][x] > mx[y]:
                     mx[y] = self.trees[y][x]
-                    visible[y][x] = True
+                    visible.add((x, y))
 
         # From Right
-        mx = [self.trees[y][-1] for y in range(self.height)]
+        mx = [row[-1] for row in self.trees]
         for x in range(self.width - 2, 0, -1):
             for y in range(1, self.height - 1):
                 if self.trees[y][x] > mx[y]:
                     mx[y] = self.trees[y][x]
-                    visible[y][x] = True
+                    visible.add((x, y))
 
-        return sum(1 for y in range(self.height) for x in range(self.width) if visible[y][x])
+        return len(visible) + 2 * (self.width + self.height - 2)
 
     def max_scenic_score(self) -> int:
         max_score = 0
