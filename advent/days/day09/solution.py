@@ -43,7 +43,7 @@ class Point:
         return Point(self.x - other.x, self.y - other.y)
 
     def is_unit(self) -> bool:
-        """ return true, if this discribes any point (diagonally) adjacent to the origin"""
+        """ return true, if this describes any point (diagonally) adjacent to the origin"""
         return abs(self.x) <= 1 and abs(self.y) <= 1
 
     def as_unit(self) -> Point:
@@ -53,6 +53,7 @@ class Point:
         return Point(unit(self.x), unit(self.y))
 
     def step_to(self, other: Point) -> Point | None:
+        """ Returns a point one step towards the other point. Returns None, if already adjacent """
         diff = other.sub(self)
         if diff.is_unit():
             return None
@@ -75,7 +76,7 @@ class Command:
 
     @staticmethod
     def walk(lst: list[Command], rope_length: int):
-        """ Walks the whole rope in Planck length steps """
+        """ Walks the whole rope in Planck length steps according to commands """
         rope = [Point(0, 0)] * rope_length
         visited = {rope[-1]}
         for command in lst:
