@@ -205,3 +205,43 @@ def test_times_max():
     expected = [['a', 'a'], ['a'], []]
     result = list(parser.parse_multi(input))
     assert result == expected
+
+
+def test_some_lazy():
+    input = 'aa'
+    parser = P.is_char('a').some_lazy()
+    expected = [['a'], ['a', 'a']]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_many_lazy():
+    input = 'aa'
+    parser = P.is_char('a').many_lazy()
+    expected = [[], ['a'], ['a', 'a']]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_times_lazy_exact():
+    input = 'aaa'
+    parser = P.is_char('a').times_lazy(exact=2)
+    expected = [['a', 'a']]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_times_lazy_min():
+    input = 'aaa'
+    parser = P.is_char('a').times_lazy(min=2)
+    expected = [['a', 'a'], ['a', 'a', 'a']]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_times_lazy_max():
+    input = 'aaa'
+    parser = P.is_char('a').times_lazy(max=2)
+    expected = [[], ['a'], ['a', 'a']]
+    result = list(parser.parse_multi(input))
+    assert result == expected

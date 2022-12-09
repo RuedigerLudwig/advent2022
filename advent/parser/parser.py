@@ -114,6 +114,10 @@ class P(Generic[T]):
     def surround(self, other: P[Any]) -> P[T]:
         return P.map3(other, self, other, lambda _1, v, _2: v)
 
+    def some_lazy(self) -> P[list[T]]:
+        return P._fix(lambda p: self.bind(
+            lambda x: P.either(P.pure([]), p).fmap(lambda ys: [x] + ys)))
+
     def some(self) -> P[list[T]]:
         return P._fix(lambda p: self.bind(
             lambda x: P.either(p, P.pure([])).fmap(lambda ys: [x] + ys)))
@@ -121,11 +125,17 @@ class P(Generic[T]):
     def many(self) -> P[list[T]]:
         return P.either(self.some(), P.pure([]))
 
+    def many_lazy(self) -> P[list[T]]:
+        return P.either(P.pure([]), self.some_lazy())
+
     def satisfies(self, pred: Callable[[T], bool]) -> P[T]:
         return self.bind(lambda v: P.pure(v) if pred(v) else P.fail())
 
     def optional(self) -> P[T | None]:
         return P.either(self, P.pure(None))
+
+    def optional_lazy(self) -> P[T | None]:
+        return P.either(P.pure(None), self)
 
     def times(self, *, max: int | None = None, min: int | None = None,
               exact: int | None = None) -> P[list[T]]:
@@ -136,6 +146,18 @@ class P(Generic[T]):
                 return self.many().satisfies(lambda lst: len(lst) >= mn)
             case (None, None, int(mx)):
                 return self.many().satisfies(lambda lst: len(lst) <= mx)
+            case _:
+                raise Exception("Choose exactly one of exact, min or max")
+
+    def times_lazy(self, *, max: int | None = None, min: int | None = None,
+                   exact: int | None = None) -> P[list[T]]:
+        match (exact, min, max):
+            case (int(e), None, None):
+                return self.many_lazy().satisfies(lambda lst: len(lst) == e)
+            case (None, int(mn), None):
+                return self.many_lazy().satisfies(lambda lst: len(lst) >= mn)
+            case (None, None, int(mx)):
+                return self.many_lazy().satisfies(lambda lst: len(lst) <= mx)
             case _:
                 raise Exception("Choose exactly one of exact, min or max")
 
