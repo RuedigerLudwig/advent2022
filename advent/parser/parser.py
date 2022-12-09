@@ -127,6 +127,18 @@ class P(Generic[T]):
     def optional(self) -> P[T | None]:
         return P.either(self, P.pure(None))
 
+    def times(self, *, max: int | None = None, min: int | None = None,
+              exact: int | None = None) -> P[list[T]]:
+        match (exact, min, max):
+            case (int(e), None, None):
+                return self.many().satisfies(lambda lst: len(lst) == e)
+            case (None, int(mn), None):
+                return self.many().satisfies(lambda lst: len(lst) >= mn)
+            case (None, None, int(mx)):
+                return self.many().satisfies(lambda lst: len(lst) <= mx)
+            case _:
+                raise Exception("Choose exactly one of exact, min or max")
+
     def sep_by(self, sep: P[Any]) -> P[list[T]]:
         return P.map2(self, P.snd(sep, self).many(), lambda f, r: [f] + r)
 

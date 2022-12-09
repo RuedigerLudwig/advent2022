@@ -181,3 +181,27 @@ def test_choice():
     expected = ['1', 1]
     result = list(parser.parse_multi(input))
     assert result == expected
+
+
+def test_times_exact():
+    input = 'aaa'
+    parser = P.is_char('a').times(exact=2)
+    expected = [['a', 'a']]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_times_min():
+    input = 'aaa'
+    parser = P.is_char('a').times(min=2)
+    expected = [['a', 'a', 'a'], ['a', 'a']]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_times_max():
+    input = 'aaa'
+    parser = P.is_char('a').times(max=2)
+    expected = [['a', 'a'], ['a'], []]
+    result = list(parser.parse_multi(input))
+    assert result == expected
