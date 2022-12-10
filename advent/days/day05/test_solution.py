@@ -1,17 +1,17 @@
-from advent.common import utils
+from advent.common import input
 
 from .solution import Move, day_num, part1, part2, Crane
 
 
 def test_part1():
-    data = utils.read_data(day_num, 'test01.txt')
+    data = input.read_lines(day_num, 'test01.txt')
     expected = "CMZ"
     result = part1(data)
     assert result == expected
 
 
 def test_part2():
-    data = utils.read_data(day_num, 'test01.txt')
+    data = input.read_lines(day_num, 'test01.txt')
     expected = "MCD"
     result = part2(data)
     assert result == expected
@@ -32,7 +32,7 @@ def test_parse_line2():
 
 
 def test_drawing():
-    data = utils.read_data(day_num, 'test01.txt')
+    data = input.read_lines(day_num, 'test01.txt')
     expected = ["ZN", "MCD", "P"]
     result = Crane.parse_stacks(data)
     assert result == expected
@@ -46,7 +46,7 @@ def test_parse_move():
 
 
 def test_parse_all():
-    data = utils.read_data(day_num, 'test01.txt')
+    data = input.read_lines(day_num, 'test01.txt')
     expected = Crane(
         ["ZN", "MCD", "P"],
         [Move(1, 1, 0), Move(3, 0, 2), Move(2, 1, 0), Move(1, 0, 1)], True)
@@ -55,7 +55,7 @@ def test_parse_all():
 
 
 def test_all_moves():
-    data = utils.read_data(day_num, 'test01.txt')
+    data = input.read_lines(day_num, 'test01.txt')
     crane = Crane.parse(data, False)
     expected = ["C", "M", "PDNZ"]
     result = crane.perform_all_moves()
@@ -63,7 +63,7 @@ def test_all_moves():
 
 
 def test_all_moves9001():
-    data = utils.read_data(day_num, 'test01.txt')
+    data = input.read_lines(day_num, 'test01.txt')
     crane = Crane.parse(data, True)
     expected = ["M", "C", "PZND"]
     result = crane.perform_all_moves()

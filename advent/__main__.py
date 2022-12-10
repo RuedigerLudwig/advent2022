@@ -1,7 +1,7 @@
 import sys
 from importlib import import_module
 
-from advent.common import utils
+from advent.common import input
 from advent.days.template import Day, ResultType, is_day
 
 
@@ -30,7 +30,7 @@ def get_day(day_num: int) -> Day:
 
 
 def run(day: Day, part: int) -> None:
-    data = utils.read_data(day.day_num, 'input.txt')
+    data = input.read_lines(day.day_num, 'input.txt')
     match part:
         case 1: output(day.day_num, 1, day.part1(data))
         case 2: output(day.day_num, 2, day.part2(data))

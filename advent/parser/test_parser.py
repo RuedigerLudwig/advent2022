@@ -75,9 +75,17 @@ def test_between():
 
 def test_sep_by():
     parser = P.signed().sep_by(P.is_char(','))
-    input = '1,1,2,3,5,8,13'
-    expected = [1, 1, 2, 3, 5, 8, 13]
-    result = parser.parse(input).get()
+    input = '2,3,5'
+    expected = [[2, 3, 5], [2, 3], [2]]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_sep_by_lazy():
+    parser = P.signed().sep_by_lazy(P.is_char(','))
+    input = '2,3,5'
+    expected = [[2], [2, 3], [2, 3, 5]]
+    result = list(parser.parse_multi(input))
     assert result == expected
 
 
@@ -130,7 +138,7 @@ def test_seq_seq():
 
 def test_not():
     input = 'a'
-    parser = P.second(P.no_match(P.is_char('!')), P.is_char('a'))
+    parser = P.second(P.is_char('!').no(), P.is_char('a'))
     expected = 'a'
     result = parser.parse(input).get()
     assert result == expected

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from typing import Iterator
+from typing import Iterator, Self
 
 day_num = 8
 
@@ -20,10 +20,10 @@ class Forest:
     width: int
     height: int
 
-    @staticmethod
-    def parse(lines: Iterator[str]) -> Forest:
+    @classmethod
+    def parse(cls, lines: Iterator[str]) -> Self:
         trees = [[int(tree) for tree in line] for line in lines]
-        return Forest(trees, len(trees[0]), len(trees))
+        return cls(trees, len(trees[0]), len(trees))
 
     def count_visible_trees(self) -> int:
         visible: set[tuple[int, int]] = set()

@@ -53,7 +53,7 @@ def draw(lines: Iterator[str], width: int, height: int) -> list[str]:
     picture = ""
     for cycle, sprite in enumerate(cycles(lines)):
         crt_pos = cycle % width
-        if sprite - 1 <= crt_pos and crt_pos <= sprite + 1:
+        if sprite - 1 <= crt_pos <= sprite + 1:
             picture += '#'
         else:
             picture += ' '

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Self
 from enum import Enum
 
 day_num = 2
@@ -26,8 +26,8 @@ class Shape(Enum):
     Paper = 2
     Scissors = 3
 
-    @staticmethod
-    def parse(line: str) -> tuple[Shape, Shape]:
+    @classmethod
+    def parse(cls, line: str) -> tuple[Self, Self]:
         """
         Parses a line into a game of RPC
         Parameters
@@ -47,11 +47,11 @@ class Shape(Enum):
             or either of the shapes is unknown
         """
         match line.strip().split():
-            case [o, p]: return Shape.parse_opponent(o), Shape.parse_player(p)
+            case [o, p]: return cls.parse_opponent(o), cls.parse_player(p)
             case _: raise Exception(f"Unknown line: {line}")
 
-    @staticmethod
-    def parse_opponent(char: str) -> Shape:
+    @classmethod
+    def parse_opponent(cls, char: str) -> Self:
         """
         Parses a shape for RPC
         A -> Rock
@@ -73,13 +73,13 @@ class Shape(Enum):
             If the character does not describe a valid shape
         """
         match char.strip().upper():
-            case 'A': return Shape.Rock
-            case 'B': return Shape.Paper
-            case 'C': return Shape.Scissors
+            case 'A': return cls.Rock
+            case 'B': return cls.Paper
+            case 'C': return cls.Scissors
             case _: raise Exception(f"Unknown char : {char}")
 
-    @staticmethod
-    def parse_player(char: str) -> Shape:
+    @classmethod
+    def parse_player(cls, char: str) -> Self:
         """
         Parses a shape for RPC using rules for player shapes
         X -> Rock
@@ -101,9 +101,9 @@ class Shape(Enum):
             If the character does not describe a valid shape
         """
         match char.strip().upper():
-            case 'X': return Shape.Rock
-            case 'Y': return Shape.Paper
-            case 'Z': return Shape.Scissors
+            case 'X': return cls.Rock
+            case 'Y': return cls.Paper
+            case 'Z': return cls.Scissors
             case _: raise Exception(f"Unknown char : {char}")
 
     def prev(self) -> Shape:
@@ -135,8 +135,8 @@ class Result(Enum):
     Draw = 2
     Win = 3
 
-    @staticmethod
-    def parse(line: str) -> tuple[Shape, Result]:
+    @classmethod
+    def parse(cls, line: str) -> tuple[Shape, Self]:
         """
         Parses a line into a game of RPC with anm expected outcome
         Parameters
@@ -156,11 +156,11 @@ class Result(Enum):
             or either the shape or result is unknown
         """
         match line.strip().split():
-            case [o, r]: return Shape.parse_opponent(o), Result.parse_result(r)
+            case [o, r]: return Shape.parse_opponent(o), cls.parse_result(r)
             case _: raise Exception(f"Unknown line: {line}")
 
-    @staticmethod
-    def parse_result(char: str) -> Result:
+    @classmethod
+    def parse_result(cls, char: str) -> Self:
         """
         Parses an expected result for RPC
         X -> Lose
@@ -182,9 +182,9 @@ class Result(Enum):
             If the character does not describe a valid result
         """
         match char.strip().upper():
-            case 'X': return Result.Lose
-            case 'Y': return Result.Draw
-            case 'Z': return Result.Win
+            case 'X': return cls.Lose
+            case 'Y': return cls.Draw
+            case 'Z': return cls.Win
             case _: raise Exception(f"Unknown char : {char}")
 
     def player_shape(self, other: Shape) -> Shape:

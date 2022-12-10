@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 
-from typing import Iterator
+from typing import Iterator, Self
 
 day_num = 7
 
@@ -15,32 +15,44 @@ def part2(lines: Iterator[str]) -> int:
     return directory.get_min_delete_size(70_000_000, 30_000_000)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, eq=False)
 class Directory:
     name: str
     parent: Directory | None
-    subdirs: list[Directory] = field(default_factory=list)
-    files: list[tuple[str, int]] = field(default_factory=list)
-    size: int | None = None
+    subdirs: list[Directory] = field(default_factory=list, init=False)
+    files: list[tuple[str, int]] = field(default_factory=list, init=False)
+    size: int | None = field(default=None, init=False, repr=False)
+
+    @classmethod
+    def create_root(cls) -> Self:
+        return cls('/', None)
 
     def cd_into(self, name: str) -> Directory:
         """
         Returns the named sub directory or .. for parent
         May fail if unkown subdirectory - or already in root
         """
-        if name == "..":
-            if self.parent is None:
-                raise Exception('Already at root Directory')
-            return self.parent
+        match name:
+            case '/':
+                current = self
+                while current.parent is not None:
+                    current = current.parent
+                return current
 
-        for sub in self.subdirs:
-            if sub.name == name:
-                return sub
-        raise Exception(f"Could not find subdir {name}")
+            case '..':
+                if self.parent is None:
+                    raise Exception('Already at root Directory')
+                return self.parent
+
+            case _:
+                for sub in self.subdirs:
+                    if sub.name == name:
+                        return sub
+                raise Exception(f"Could not find subdir {name}")
 
     def add_directory(self, name: str):
         """ Adds the named directory."""
-        self.subdirs.append(Directory(name, self))
+        self.subdirs.append(Directory(name, parent=self))
 
     def add_file(self, name: str, size: int):
         """ Adds the given file and size """
@@ -69,7 +81,7 @@ class Directory:
         """
         Returns the size of the smallest directory that must be removed to created the free space
         given as a parameter and the given disk size
-        #"""
+        """
         unused = disk_size - self.get_size()
         minimum: int | None = None
         for dir in self.get_all_directories():
@@ -82,14 +94,11 @@ class Directory:
 
         return minimum
 
-    @staticmethod
-    def parse(lines: Iterator[str]) -> Directory:
-        line = next(lines)
-        if line != '$ cd /':
-            raise Exception(f"Illegal first line: {line}")
-
-        root = Directory('/', None)
+    @classmethod
+    def parse(cls, lines: Iterator[str]) -> Self:
+        root = cls.create_root()
         current = root
+
         for line in lines:
             match line.split():
                 case ['$', 'cd', name]:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from typing import Iterator
+from typing import Iterator, Self
 
 day_num = 4
 
@@ -19,10 +19,10 @@ class Range:
     start: int
     end: int
 
-    @staticmethod
-    def parse(line: str) -> Range:
+    @classmethod
+    def parse(cls, line: str) -> Self:
         match line.split('-'):
-            case [s, e]: return Range(int(s), int(e))
+            case [s, e]: return cls(int(s), int(e))
             case _: raise Exception(f"Not a valid range: {line}")
 
     def includes(self, other: Range) -> bool:
@@ -39,10 +39,10 @@ class Pair:
     first: Range
     second: Range
 
-    @staticmethod
-    def parse(line: str) -> Pair:
+    @classmethod
+    def parse(cls, line: str) -> Self:
         match line.split(','):
-            case [f, s]: return Pair(Range.parse(f), Range.parse(s))
+            case [f, s]: return cls(Range.parse(f), Range.parse(s))
             case _: raise Exception(f"Not a valid Pair: {line}")
 
     def includes(self) -> bool:

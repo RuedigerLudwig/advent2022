@@ -60,16 +60,16 @@ class P(Generic[T]):
     def parse_multi(self, s: str, i: int = 0) -> Iterator[T]:
         return (v for _, v in self.func(ParserInput(s, i)))
 
-    @staticmethod
-    def pure(value: T) -> P[T]:
+    @classmethod
+    def pure(cls, value: T) -> P[T]:
         return P(lambda pp: iter([(pp, value)]))
 
-    @staticmethod
-    def fail() -> P[Any]:
+    @classmethod
+    def fail(cls) -> P[Any]:
         return P(lambda _: iter([]))
 
-    @staticmethod
-    def _fix(p1: Callable[[P[Any]], P[T]]) -> P[T]:
+    @classmethod
+    def _fix(cls, p1: Callable[[P[Any]], P[T]]) -> P[T]:
         """ Not really nice helper function, but it works"""
         return [p._forward(q.func) for p in [P(None)] for q in [p1(p)]][0]  # type: ignore
 
@@ -101,25 +101,30 @@ class P(Generic[T]):
     def replace(self, value: TR) -> P[TR]:
         return self.fmap(lambda _: value)
 
-    def unit(self) -> P[tuple[()]]:
+    def as_unit(self) -> P[tuple[()]]:
         return self.fmap(lambda _: ())
 
     def apply(self, p2: P[Callable[[T], TR]]) -> P[TR]:
         return self.bind(lambda x: p2.bind(lambda y: P.pure(y(x))))
 
+    @classmethod
+    def first(cls, p1: P[T1], p2: P[Any]) -> P[T1]:
+        return p1.bind(lambda v1: p2.fmap(lambda _: v1))
+
+    @classmethod
+    def second(cls, p1: P[Any], p2: P[T2]) -> P[T2]:
+        return p1.bind(lambda _: p2)
+
     def between(self, pre: P[Any], post: P[Any]) -> P[T]:
         return P.map3(pre, self, post, lambda _1, v, _2: v)
-
-    def surround(self, other: P[Any]) -> P[T]:
-        return P.map3(other, self, other, lambda _1, v, _2: v)
-
-    def some_lazy(self) -> P[list[T]]:
-        return P._fix(lambda p: self.bind(
-            lambda x: P.either(P.pure([]), p).fmap(lambda ys: [x] + ys)))
 
     def some(self) -> P[list[T]]:
         return P._fix(lambda p: self.bind(
             lambda x: P.either(p, P.pure([])).fmap(lambda ys: [x] + ys)))
+
+    def some_lazy(self) -> P[list[T]]:
+        return P._fix(lambda p: self.bind(
+            lambda x: P.either(P.pure([]), p).fmap(lambda ys: [x] + ys)))
 
     def many(self) -> P[list[T]]:
         return P.either(self.some(), P.pure([]))
@@ -136,6 +141,22 @@ class P(Generic[T]):
     def optional_lazy(self) -> P[T | None]:
         return P.either(P.pure(None), self)
 
+    @overload
+    def times(self, *, exact: int) -> P[list[T]]:
+        ...
+
+    @overload
+    def times(self, *, min: int) -> P[list[T]]:
+        ...
+
+    @overload
+    def times(self, *, max: int) -> P[list[T]]:
+        ...
+
+    @overload
+    def times(self, *, min: int, max: int) -> P[list[T]]:
+        ...
+
     def times(self, *, max: int | None = None, min: int | None = None,
               exact: int | None = None) -> P[list[T]]:
         match (exact, min, max):
@@ -145,8 +166,26 @@ class P(Generic[T]):
                 return self.many().satisfies(lambda lst: len(lst) >= mn)
             case (None, None, int(mx)):
                 return self.many().satisfies(lambda lst: len(lst) <= mx)
+            case (None, int(mn), int(mx)):
+                return self.many().satisfies(lambda lst: mn <= len(lst) <= mx)
             case _:
-                raise Exception("Choose exactly one of exact, min or max")
+                raise Exception("Illegal combination of parameters")
+
+    @overload
+    def times_lazy(self, *, exact: int) -> P[list[T]]:
+        ...
+
+    @overload
+    def times_lazy(self, *, min: int) -> P[list[T]]:
+        ...
+
+    @overload
+    def times_lazy(self, *, max: int) -> P[list[T]]:
+        ...
+
+    @overload
+    def times_lazy(self, *, min: int, max: int) -> P[list[T]]:
+        ...
 
     def times_lazy(self, *, max: int | None = None, min: int | None = None,
                    exact: int | None = None) -> P[list[T]]:
@@ -157,24 +196,20 @@ class P(Generic[T]):
                 return self.many_lazy().satisfies(lambda lst: len(lst) >= mn)
             case (None, None, int(mx)):
                 return self.many_lazy().satisfies(lambda lst: len(lst) <= mx)
+            case (None, int(mn), int(mx)):
+                return self.many_lazy().satisfies(lambda lst: mn <= len(lst) <= mx)
             case _:
-                raise Exception("Choose exactly one of exact, min or max")
+                raise Exception("Illegal combination of parameters")
 
     def sep_by(self, sep: P[Any]) -> P[list[T]]:
         return P.map2(self, P.second(sep, self).many(), lambda f, r: [f] + r)
 
-    @staticmethod
-    def first(p1: P[T1], p2: P[Any]) -> P[T1]:
-        return P.map2(p1, p2, lambda v1, _: v1)
+    def sep_by_lazy(self, sep: P[Any]) -> P[list[T]]:
+        return P.map2(self, P.second(sep, self).many_lazy(), lambda f, r: [f] + r)
 
-    @staticmethod
-    def second(p1: P[Any], p2: P[T2]) -> P[T2]:
-        return p1.bind(lambda _: p2)
-
-    @staticmethod
-    def no_match(p: P[Any]) -> P[tuple[()]]:
+    def no(self) -> P[tuple[()]]:
         def inner(parserPos: ParserInput) -> ParserResult[tuple[()]]:
-            result = p.func(parserPos)
+            result = self.func(parserPos)
             try:
                 next(result)
                 # Silently yields nothing so is an empty Generator
@@ -183,19 +218,19 @@ class P(Generic[T]):
 
         return P(inner)
 
-    @staticmethod
-    def map2(p1: P[T1], p2: P[T2], func: Callable[[T1, T2], TR]) -> P[TR]:
+    @classmethod
+    def map2(cls, p1: P[T1], p2: P[T2], func: Callable[[T1, T2], TR]) -> P[TR]:
         return p1.bind(lambda v1: p2.fmap(lambda v2: func(v1, v2)))
 
-    @staticmethod
-    def map3(p1: P[T1], p2: P[T2], p3: P[T3], func: Callable[[T1, T2, T3], TR]) -> P[TR]:
+    @classmethod
+    def map3(cls, p1: P[T1], p2: P[T2], p3: P[T3], func: Callable[[T1, T2, T3], TR]) -> P[TR]:
         return p1.bind(
             lambda v1: p2.bind(
                 lambda v2: p3.fmap(
                     lambda v3: func(v1, v2, v3))))
 
-    @staticmethod
-    def map4(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
+    @classmethod
+    def map4(cls, p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
              func: Callable[[T1, T2, T3, T4], TR]) -> P[TR]:
         return p1.bind(
             lambda v1: p2.bind(
@@ -203,8 +238,8 @@ class P(Generic[T]):
                     lambda v3: p4.fmap(
                         lambda v4: func(v1, v2, v3, v4)))))
 
-    @staticmethod
-    def map5(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], p5: P[T5],
+    @classmethod
+    def map5(cls, p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], p5: P[T5],
              func: Callable[[T1, T2, T3, T4, T5], TR]) -> P[TR]:
         return p1.bind(
             lambda v1: p2.bind(
@@ -213,57 +248,57 @@ class P(Generic[T]):
                         lambda v4: p5.fmap(
                             lambda v5: func(v1, v2, v3, v4, v5))))))
 
-    @staticmethod
+    @classmethod
     @overload
-    def seq(p1: P[T1], p2: P[T2], /) -> P[tuple[T1, T2]]:
+    def seq(cls, p1: P[T1], p2: P[T2], /) -> P[tuple[T1, T2]]:
         ...
 
-    @staticmethod
+    @classmethod
     @overload
-    def seq(p1: P[T1], p2: P[T2], p3: P[T3], /) -> P[tuple[T1, T2, T3]]:
+    def seq(cls, p1: P[T1], p2: P[T2], p3: P[T3], /) -> P[tuple[T1, T2, T3]]:
         ...
 
-    @staticmethod
+    @classmethod
     @overload
-    def seq(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /) -> P[tuple[T1, T2, T3, T4]]:
+    def seq(cls, p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /) -> P[tuple[T1, T2, T3, T4]]:
         ...
 
-    @staticmethod
+    @classmethod
     @overload
-    def seq(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
+    def seq(cls, p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
             p5: P[T5], /) -> P[tuple[T1, T2, T3, T4, T5]]:
         ...
 
-    @staticmethod
-    def seq(*ps: P[Any]) -> P[tuple[Any, ...]]:
+    @classmethod
+    def seq(cls, *ps: P[Any]) -> P[tuple[Any, ...]]:
         return reduce(lambda p, x: x.bind(
             lambda a: p.fmap(lambda b: chain([a], b))),
             list(ps)[::-1], P.pure(iter([]))).fmap(tuple)
 
-    @staticmethod
+    @classmethod
     @overload
-    def sep_seq(p1: P[T1], p2: P[T2], /, *, sep: P[Any]) -> P[tuple[T1, T2]]:
+    def sep_seq(cls, p1: P[T1], p2: P[T2], /, *, sep: P[Any]) -> P[tuple[T1, T2]]:
         ...
 
-    @staticmethod
+    @classmethod
     @overload
-    def sep_seq(p1: P[T1], p2: P[T2], p3: P[T3], /, *, sep: P[Any]) -> P[tuple[T1, T2, T3]]:
+    def sep_seq(cls, p1: P[T1], p2: P[T2], p3: P[T3], /, *, sep: P[Any]) -> P[tuple[T1, T2, T3]]:
         ...
 
-    @staticmethod
+    @classmethod
     @overload
-    def sep_seq(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /,
+    def sep_seq(cls, p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /,
                 *, sep: P[Any]) -> P[tuple[T1, T2, T3, T4]]:
         ...
 
-    @staticmethod
+    @classmethod
     @overload
-    def sep_seq(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
+    def sep_seq(cls, p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
                 p5: P[T5], /, *, sep: P[Any]) -> P[tuple[T1, T2, T3, T4, T5]]:
         ...
 
-    @staticmethod
-    def sep_seq(*ps: P[Any], sep: P[Any]) -> P[tuple[Any, ...]]:
+    @classmethod
+    def sep_seq(cls, *ps: P[Any], sep: P[Any]) -> P[tuple[Any, ...]]:
         first, *rest = list(ps)
         return P.map2(first,
                       reduce(lambda p, x: P.second(sep, x.bind(
@@ -271,112 +306,108 @@ class P(Generic[T]):
                           rest[::-1], P.pure(iter([]))),
                       lambda f, r: (f,) + tuple(r))
 
-    @staticmethod
-    def either(p1: P[T1], p2: P[T2], /) -> P[T1 | T2]:
+    @classmethod
+    def either(cls, p1: P[T1], p2: P[T2], /) -> P[T1 | T2]:
         def inner(parserPos: ParserInput):
             yield from p1.func(parserPos)
             yield from p2.func(parserPos)
 
         return P(inner)
 
-    @staticmethod
+    @classmethod
     @overload
-    def choice(p1: P[T1], p2: P[T2], p3: P[T3], /) -> P[T1 | T2 | T3]:
+    def choice(cls, p1: P[T1], p2: P[T2], p3: P[T3], /) -> P[T1 | T2 | T3]:
         ...
 
-    @staticmethod
+    @classmethod
     @overload
-    def choice(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /) -> P[T1 | T2 | T3 | T4]:
+    def choice(cls, p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4], /) -> P[T1 | T2 | T3 | T4]:
         ...
 
-    @staticmethod
+    @classmethod
     @overload
-    def choice(p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
+    def choice(cls, p1: P[T1], p2: P[T2], p3: P[T3], p4: P[T4],
                p5: P[T5], /) -> P[T1 | T2 | T3 | T4 | T5]:
         ...
 
-    @staticmethod
-    def choice(*ps: P[Any]) -> P[Any]:
+    @classmethod
+    def choice(cls, *ps: P[Any]) -> P[Any]:
         def inner(parserPos: ParserInput) -> Iterator[Any]:
             for p in ps:
                 yield from p.func(parserPos)
         return P(inner)
 
-    @staticmethod
-    def choice2(*ps: P[T]) -> P[T]:
+    @classmethod
+    def choice2(cls, *ps: P[T]) -> P[T]:
         return P.choice(*ps)
 
-    @staticmethod
-    def one_char() -> P[str]:
+    @classmethod
+    def one_char(cls) -> P[str]:
         def inner(parserPos: ParserInput) -> ParserResult[str]:
             if parserPos.has_data():
                 yield parserPos.step()
         return P(inner)
 
-    @staticmethod
-    def eof() -> P[tuple[()]]:
+    @classmethod
+    def eof(cls) -> P[tuple[()]]:
         def inner(parserPos: ParserInput) -> ParserResult[tuple[()]]:
             if not parserPos.has_data():
                 yield parserPos, ()
         return P(inner)
 
-    @staticmethod
-    def char_func(cmp: Callable[[str], bool]) -> P[str]:
+    @classmethod
+    def char_func(cls, cmp: Callable[[str], bool]) -> P[str]:
         return P.one_char().satisfies(cmp)
 
-    @staticmethod
-    def is_char(cmp: str) -> P[str]:
+    @classmethod
+    def is_char(cls, cmp: str) -> P[str]:
         return P.char_func(lambda c: c == cmp)
 
-    @staticmethod
-    def is_not_char(s: str) -> P[tuple[()]]:
-        return P.no_match(P.is_char(s))
-
-    @staticmethod
-    def string(s: str) -> P[str]:
+    @classmethod
+    def string(cls, s: str) -> P[str]:
         return P.seq(*map(P.is_char, s)).replace(s)
 
-    @staticmethod
-    def one_of(s: str) -> P[str]:
+    @classmethod
+    def one_of(cls, s: str) -> P[str]:
         return P.char_func(lambda c: c in s)
 
-    @staticmethod
-    def any_decimal() -> P[str]:
+    @classmethod
+    def any_decimal(cls) -> P[str]:
         return P.char_func(lambda c: c.isdecimal())
 
-    @staticmethod
-    def is_decimal(num: int) -> P[str]:
+    @classmethod
+    def is_decimal(cls, num: int) -> P[str]:
         return P.any_decimal().satisfies(lambda c: unicodedata.decimal(c) == num)
 
-    @staticmethod
-    def is_not_decimal(num: int) -> P[str]:
+    @classmethod
+    def is_not_decimal(cls, num: int) -> P[str]:
         return P.any_decimal().satisfies(lambda c: unicodedata.decimal(c) != num)
 
-    @staticmethod
-    def lower() -> P[str]:
+    @classmethod
+    def lower(cls) -> P[str]:
         return P.char_func(lambda c: c.islower())
 
-    @staticmethod
-    def upper() -> P[str]:
+    @classmethod
+    def upper(cls) -> P[str]:
         return P.char_func(lambda c: c.isupper())
 
-    @staticmethod
-    def space() -> P[str]:
+    @classmethod
+    def space(cls) -> P[str]:
         return P.char_func(lambda c: c.isspace())
 
-    @staticmethod
-    def word(p1: P[str]) -> P[str]:
-        return P.first(p1.many().fmap(lambda cs: ''.join(cs)), P.no_match(p1))
+    @classmethod
+    def word(cls, p1: P[str]) -> P[str]:
+        return P.first(p1.many().fmap(lambda cs: ''.join(cs)), p1.no())
 
-    @staticmethod
-    def unsigned() -> P[int]:
-        return P.either(P.first(P.is_decimal(0), P.no_match(P.any_decimal())),
+    @classmethod
+    def unsigned(cls) -> P[int]:
+        return P.either(P.first(P.is_decimal(0), P.any_decimal().no()),
                         P.map2(P.is_not_decimal(0), P.word(P.any_decimal()),
                                lambda f, s: f + s)
                         ).fmap(int)
 
-    @staticmethod
-    def signed() -> P[int]:
+    @classmethod
+    def signed(cls) -> P[int]:
         return P.map2(P.one_of('+-').optional(), P.unsigned(),
                       lambda sign, num: num if sign != '-' else -num)
 
@@ -399,8 +430,8 @@ class P(Generic[T]):
         return P.first(self, WHITE_SPACE)
 
     def trim(self) -> P[T]:
-        return self.surround(WHITE_SPACE)
+        return self.between(WHITE_SPACE, WHITE_SPACE)
 
 
-WHITE_SPACE: P[tuple[()]] = P.space().many().unit()
-SEP_SPACE: P[tuple[()]] = P.space().some().unit()
+WHITE_SPACE: P[tuple[()]] = P.space().many().as_unit()
+SEP_SPACE: P[tuple[()]] = P.space().some().as_unit()

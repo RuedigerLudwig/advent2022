@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from typing import ClassVar, Iterator
+from typing import ClassVar, Iterator, Self
 
 from advent.parser.parser import P
 
@@ -31,13 +31,13 @@ class Move:
     to_parser: ClassVar[P[int]] = P.second(P.string(" to "), P.unsigned())
     move_parser: ClassVar[P[tuple[int, int, int]]] = P.seq(amount_parser, from_parser, to_parser)
 
-    @staticmethod
-    def parse(line: str) -> Move | None:
-        parsed = Move.move_parser.parse(line)
+    @classmethod
+    def parse(cls, line: str) -> Self | None:
+        parsed = cls.move_parser.parse(line)
         if parsed.is_fail():
             return None
         amount, frm, to = parsed.get()
-        return Move(amount, frm - 1, to - 1)
+        return cls(amount, frm - 1, to - 1)
 
     def do_move(self, crates: list[str], as_9001: bool) -> list[str]:
         """
@@ -62,12 +62,12 @@ class Crane:
         P.one_char().in_brackets(), P.string("   ").replace(None))
     crate_row_parser: ClassVar[P[list[str | None]]] = crate_parser.sep_by(P.is_char(' '))
 
-    @staticmethod
-    def parse_crate_row(line: str) -> list[None | str] | None:
+    @classmethod
+    def parse_crate_row(cls, line: str) -> list[None | str] | None:
         return Crane.crate_row_parser.parse(line).get_or(None)
 
-    @staticmethod
-    def parse_stacks(lines: Iterator[str]) -> list[str]:
+    @classmethod
+    def parse_stacks(cls, lines: Iterator[str]) -> list[str]:
         stacks: list[str] = []
         for line in lines:
             crate_row = Crane.parse_crate_row(line)
@@ -83,14 +83,14 @@ class Crane:
 
         raise Exception("Can never happen")
 
-    @staticmethod
-    def parse(lines: Iterator[str], is_9001: bool) -> Crane:
-        drawing = Crane.parse_stacks(lines)
+    @classmethod
+    def parse(cls, lines: Iterator[str], is_9001: bool) -> Self:
+        drawing = cls.parse_stacks(lines)
         moves = [p for p in (Move.parse(line) for line in lines) if p is not None]
-        return Crane(drawing, moves, is_9001)
+        return cls(drawing, moves, is_9001)
 
-    @staticmethod
-    def top(crates: list[str]) -> str:
+    @classmethod
+    def top(cls, crates: list[str]) -> str:
         """ Lists the last item in the given stacks. Fails if any stack is empty """
         return ''.join(stack[-1] for stack in crates)
 
