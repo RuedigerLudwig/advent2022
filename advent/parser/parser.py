@@ -207,7 +207,7 @@ class P(Generic[T]):
     def sep_by_lazy(self, sep: P[Any]) -> P[list[T]]:
         return P.map2(self, P.second(sep, self).many_lazy(), lambda f, r: [f] + r)
 
-    def no(self) -> P[tuple[()]]:
+    def no_match(self) -> P[tuple[()]]:
         def inner(parserPos: ParserInput) -> ParserResult[tuple[()]]:
             result = self.func(parserPos)
             try:
@@ -341,8 +341,10 @@ class P(Generic[T]):
     def choice2(cls, *ps: P[T]) -> P[T]:
         return P.choice(*ps)
 
+    # Start of String functions
+
     @classmethod
-    def one_char(cls) -> P[str]:
+    def any_char(cls) -> P[str]:
         def inner(parserPos: ParserInput) -> ParserResult[str]:
             if parserPos.has_data():
                 yield parserPos.step()
@@ -350,22 +352,19 @@ class P(Generic[T]):
 
     @classmethod
     def eof(cls) -> P[tuple[()]]:
-        def inner(parserPos: ParserInput) -> ParserResult[tuple[()]]:
-            if not parserPos.has_data():
-                yield parserPos, ()
-        return P(inner)
+        return P.any_char().no_match()
 
     @classmethod
     def char_func(cls, cmp: Callable[[str], bool]) -> P[str]:
-        return P.one_char().satisfies(cmp)
+        return P.any_char().satisfies(cmp)
 
     @classmethod
-    def is_char(cls, cmp: str) -> P[str]:
+    def char(cls, cmp: str) -> P[str]:
         return P.char_func(lambda c: c == cmp)
 
     @classmethod
     def string(cls, s: str) -> P[str]:
-        return P.seq(*map(P.is_char, s)).replace(s)
+        return P.seq(*map(P.char, s)).replace(s)
 
     @classmethod
     def one_of(cls, s: str) -> P[str]:
@@ -395,16 +394,14 @@ class P(Generic[T]):
     def space(cls) -> P[str]:
         return P.char_func(lambda c: c.isspace())
 
-    @classmethod
-    def word(cls, p1: P[str]) -> P[str]:
-        return P.first(p1.many().fmap(lambda cs: ''.join(cs)), p1.no())
+    def word(self) -> P[str]:
+        return P.first(self.many().fmap(lambda cs: ''.join(str(c) for c in cs)), self.no_match())
 
     @classmethod
     def unsigned(cls) -> P[int]:
-        return P.either(P.first(P.is_decimal(0), P.any_decimal().no()),
-                        P.map2(P.is_not_decimal(0), P.word(P.any_decimal()),
-                               lambda f, s: f + s)
-                        ).fmap(int)
+        return P.either(P.first(P.is_decimal(0), P.any_decimal().no_match()).replace(0),
+                        P.map2(P.is_not_decimal(0), P.any_decimal().word(),
+                               lambda f, s: int(f + s)))
 
     @classmethod
     def signed(cls) -> P[int]:
@@ -412,16 +409,16 @@ class P(Generic[T]):
                       lambda sign, num: num if sign != '-' else -num)
 
     def in_parens(self) -> P[T]:
-        return self.between(P.is_char('('), P.is_char(')'))
+        return self.between(P.char('('), P.char(')'))
 
     def in_angles(self) -> P[T]:
-        return self.between(P.is_char('<'), P.is_char('>'))
+        return self.between(P.char('<'), P.char('>'))
 
     def in_brackets(self) -> P[T]:
-        return self.between(P.is_char('['), P.is_char(']'))
+        return self.between(P.char('['), P.char(']'))
 
     def in_curleys(self) -> P[T]:
-        return self.between(P.is_char('{'), P.is_char('}'))
+        return self.between(P.char('{'), P.char('}'))
 
     def trim_left(self) -> P[T]:
         return P.second(WHITE_SPACE, self)

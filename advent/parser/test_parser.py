@@ -3,7 +3,7 @@ import pytest
 
 
 def test_one_letter():
-    parser = P.is_char('!')
+    parser = P.char('!')
     input = '!'
     expected = '!'
     result = parser.parse(input).get()
@@ -11,7 +11,7 @@ def test_one_letter():
 
 
 def test_one_letter_longer():
-    parser = P.is_char('!')
+    parser = P.char('!')
     input = '!!'
     expected = '!'
     result = parser.parse(input).get()
@@ -66,7 +66,7 @@ def test_starting_zero():
 
 
 def test_between():
-    parser = P.signed().between(P.is_char('<'), P.is_char('>'))
+    parser = P.signed().between(P.char('<'), P.char('>'))
     input = '<-123456>'
     expected = -123456
     result = parser.parse(input).get()
@@ -74,7 +74,7 @@ def test_between():
 
 
 def test_sep_by():
-    parser = P.signed().sep_by(P.is_char(','))
+    parser = P.signed().sep_by(P.char(','))
     input = '2,3,5'
     expected = [[2, 3, 5], [2, 3], [2]]
     result = list(parser.parse_multi(input))
@@ -82,7 +82,7 @@ def test_sep_by():
 
 
 def test_sep_by_lazy():
-    parser = P.signed().sep_by_lazy(P.is_char(','))
+    parser = P.signed().sep_by_lazy(P.char(','))
     input = '2,3,5'
     expected = [[2], [2, 3], [2, 3, 5]]
     result = list(parser.parse_multi(input))
@@ -98,7 +98,7 @@ def test_trim():
 
 
 def test_sep_by_trim():
-    parser = P.signed().sep_by(P.is_char(',').trim()).trim()
+    parser = P.signed().sep_by(P.char(',').trim()).trim()
     input = ' 1 , 1 , 2 , 3 , 5 , 8 , 13!'
     expected = [1, 1, 2, 3, 5, 8, 13]
     result = parser.parse(input).get()
@@ -106,7 +106,7 @@ def test_sep_by_trim():
 
 
 def test_choice2():
-    parser = P.choice(P.is_char('a'), P.unsigned(), P.string('hallo'))
+    parser = P.choice(P.char('a'), P.unsigned(), P.string('hallo'))
     input = '1'
     expected = 1
     result = parser.parse(input).get()
@@ -120,7 +120,7 @@ def test_choice2():
 
 def test_seq():
     input = '1234'
-    parser = P.seq(P.one_char(), P.one_char(), P.one_char(), P.one_char())
+    parser = P.seq(P.any_char(), P.any_char(), P.any_char(), P.any_char())
     expected = ('1', '2', '3', '4')
     result = parser.parse(input).get()
     assert result == expected
@@ -129,7 +129,7 @@ def test_seq():
 def test_seq_seq():
     input = '1,2,3,4'
     digit = P.char_func(lambda c: c.isdigit(), )
-    parser = P.sep_seq(digit, digit, digit, digit, sep=P.is_char(','))
+    parser = P.sep_seq(digit, digit, digit, digit, sep=P.char(','))
 
     expected = ('1', '2', '3', '4')
     result = parser.parse(input).get()
@@ -138,7 +138,7 @@ def test_seq_seq():
 
 def test_not():
     input = 'a'
-    parser = P.second(P.is_char('!').no(), P.is_char('a'))
+    parser = P.second(P.char('!').no_match(), P.char('a'))
     expected = 'a'
     result = parser.parse(input).get()
     assert result == expected
@@ -150,7 +150,7 @@ def test_not():
 
 def test_multi():
     input = 'aa'
-    parser = P.is_char('a').many()
+    parser = P.char('a').many()
     expected = [['a', 'a'], ['a'], []]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -160,7 +160,7 @@ def test_either():
     input = 'aab'
     parser = P.either(
         P.seq(
-            P.is_char('a').many(), P.string('b')), P.seq(
+            P.char('a').many(), P.string('b')), P.seq(
             P.string('a'), P.string('ab')))
     expected = [(['a', 'a'], 'b'), ('a', 'ab')]
     result = list(parser.parse_multi(input))
@@ -169,7 +169,7 @@ def test_either():
 
 def test_seq_eof():
     input = 'aa'
-    parser = P.seq(P.is_char('a').many(), P.eof())
+    parser = P.seq(P.char('a').many(), P.eof())
     expected = [(['a', 'a'], ())]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -177,7 +177,7 @@ def test_seq_eof():
 
 def test_optional():
     input = '12'
-    parser = P.seq(P.is_char('1').optional(), P.unsigned())
+    parser = P.seq(P.char('1').optional(), P.unsigned())
     expected = [('1', 2), (None, 12)]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -185,7 +185,7 @@ def test_optional():
 
 def test_choice():
     input = '1'
-    parser = P.choice(P.is_char('1'), P.is_char('b'), P.unsigned())
+    parser = P.choice(P.char('1'), P.char('b'), P.unsigned())
     expected = ['1', 1]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -193,7 +193,7 @@ def test_choice():
 
 def test_times_exact():
     input = 'aaa'
-    parser = P.is_char('a').times(exact=2)
+    parser = P.char('a').times(exact=2)
     expected = [['a', 'a']]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -201,7 +201,7 @@ def test_times_exact():
 
 def test_times_min():
     input = 'aaa'
-    parser = P.is_char('a').times(min=2)
+    parser = P.char('a').times(min=2)
     expected = [['a', 'a', 'a'], ['a', 'a']]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -209,7 +209,7 @@ def test_times_min():
 
 def test_times_max():
     input = 'aaa'
-    parser = P.is_char('a').times(max=2)
+    parser = P.char('a').times(max=2)
     expected = [['a', 'a'], ['a'], []]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -217,7 +217,7 @@ def test_times_max():
 
 def test_some_lazy():
     input = 'aa'
-    parser = P.is_char('a').some_lazy()
+    parser = P.char('a').some_lazy()
     expected = [['a'], ['a', 'a']]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -225,7 +225,7 @@ def test_some_lazy():
 
 def test_many_lazy():
     input = 'aa'
-    parser = P.is_char('a').many_lazy()
+    parser = P.char('a').many_lazy()
     expected = [[], ['a'], ['a', 'a']]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -233,7 +233,7 @@ def test_many_lazy():
 
 def test_times_lazy_exact():
     input = 'aaa'
-    parser = P.is_char('a').times_lazy(exact=2)
+    parser = P.char('a').times_lazy(exact=2)
     expected = [['a', 'a']]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -241,7 +241,7 @@ def test_times_lazy_exact():
 
 def test_times_lazy_min():
     input = 'aaa'
-    parser = P.is_char('a').times_lazy(min=2)
+    parser = P.char('a').times_lazy(min=2)
     expected = [['a', 'a'], ['a', 'a', 'a']]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -249,7 +249,7 @@ def test_times_lazy_min():
 
 def test_times_lazy_max():
     input = 'aaa'
-    parser = P.is_char('a').times_lazy(max=2)
+    parser = P.char('a').times_lazy(max=2)
     expected = [[], ['a'], ['a', 'a']]
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -257,7 +257,7 @@ def test_times_lazy_max():
 
 def test_word():
     input = '123'
-    parser = P.word(P.any_decimal())
+    parser = P.any_decimal().word()
     expected = ['123']
     result = list(parser.parse_multi(input))
     assert result == expected
@@ -265,7 +265,7 @@ def test_word():
 
 def test_word2():
     input = '123a'
-    parser = P.seq(P.word(P.any_decimal()), P.is_char('a'))
+    parser = P.seq(P.any_decimal().word(), P.char('a'))
     expected = [('123', 'a')]
     result = list(parser.parse_multi(input))
     assert result == expected
