@@ -130,7 +130,7 @@ def test_seq_seq():
 
 def test_not():
     input = 'a'
-    parser = P.snd(P.no_match(P.is_char('!')), P.is_char('a'))
+    parser = P.second(P.no_match(P.is_char('!')), P.is_char('a'))
     expected = 'a'
     result = parser.parse(input).get()
     assert result == expected
@@ -170,7 +170,7 @@ def test_seq_eof():
 def test_optional():
     input = '12'
     parser = P.seq(P.is_char('1').optional(), P.unsigned())
-    expected = [('1', 2), (None, 12), (None, 1)]
+    expected = [('1', 2), (None, 12)]
     result = list(parser.parse_multi(input))
     assert result == expected
 
@@ -243,5 +243,21 @@ def test_times_lazy_max():
     input = 'aaa'
     parser = P.is_char('a').times_lazy(max=2)
     expected = [[], ['a'], ['a', 'a']]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_word():
+    input = '123'
+    parser = P.word(P.any_decimal())
+    expected = ['123']
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
+def test_word2():
+    input = '123a'
+    parser = P.seq(P.word(P.any_decimal()), P.is_char('a'))
+    expected = [('123', 'a')]
     result = list(parser.parse_multi(input))
     assert result == expected

@@ -22,15 +22,14 @@ class ParserInput:
     input: str
     start: int
 
-    def step(self, count: int = 1) -> tuple[Self, str]:
-        assert count > 0
-        if self.start + count > len(self.input):
-            raise Exception("Not enough chars left in string")
-        return ParserInput(self.input, self.start
-                           + count), self.input[self.start:self.start + count]
+    def step(self) -> tuple[Self, str]:
+        if self.start >= len(self.input):
+            raise Exception("Already at End of Input")
 
-    def is_eof(self) -> bool:
-        return self.start >= len(self.input)
+        return ParserInput(self.input, self.start + 1), self.input[self.start]
+
+    def has_data(self) -> bool:
+        return self.start < len(self.input)
 
     def __repr__(self) -> str:
         if self.start == 0:
@@ -162,15 +161,15 @@ class P(Generic[T]):
                 raise Exception("Choose exactly one of exact, min or max")
 
     def sep_by(self, sep: P[Any]) -> P[list[T]]:
-        return P.map2(self, P.snd(sep, self).many(), lambda f, r: [f] + r)
+        return P.map2(self, P.second(sep, self).many(), lambda f, r: [f] + r)
 
     @staticmethod
-    def snd(p1: P[Any], p2: P[T2]) -> P[T2]:
-        return p1.bind(lambda _: p2)
-
-    @staticmethod
-    def fst(p1: P[T1], p2: P[Any]) -> P[T1]:
+    def first(p1: P[T1], p2: P[Any]) -> P[T1]:
         return P.map2(p1, p2, lambda v1, _: v1)
+
+    @staticmethod
+    def second(p1: P[Any], p2: P[T2]) -> P[T2]:
+        return p1.bind(lambda _: p2)
 
     @staticmethod
     def no_match(p: P[Any]) -> P[tuple[()]]:
@@ -267,7 +266,7 @@ class P(Generic[T]):
     def sep_seq(*ps: P[Any], sep: P[Any]) -> P[tuple[Any, ...]]:
         first, *rest = list(ps)
         return P.map2(first,
-                      reduce(lambda p, x: P.snd(sep, x.bind(
+                      reduce(lambda p, x: P.second(sep, x.bind(
                           lambda a: p.fmap(lambda b: chain([a], b)))),
                           rest[::-1], P.pure(iter([]))),
                       lambda f, r: (f,) + tuple(r))
@@ -310,14 +309,14 @@ class P(Generic[T]):
     @staticmethod
     def one_char() -> P[str]:
         def inner(parserPos: ParserInput) -> ParserResult[str]:
-            if not parserPos.is_eof():
+            if parserPos.has_data():
                 yield parserPos.step()
         return P(inner)
 
     @staticmethod
     def eof() -> P[tuple[()]]:
         def inner(parserPos: ParserInput) -> ParserResult[tuple[()]]:
-            if parserPos.is_eof():
+            if not parserPos.has_data():
                 yield parserPos, ()
         return P(inner)
 
@@ -366,14 +365,14 @@ class P(Generic[T]):
         return P.char_func(lambda c: c.isspace())
 
     @staticmethod
-    def joined(p1: P[str]) -> P[str]:
-        return p1.many().fmap(lambda cs: ''.join(cs))
+    def word(p1: P[str]) -> P[str]:
+        return P.first(p1.many().fmap(lambda cs: ''.join(cs)), P.no_match(p1))
 
     @staticmethod
     def unsigned() -> P[int]:
-        return P.either(P.fst(P.is_decimal(0), P.no_match(P.any_decimal())),
-                        P.map2(P.is_not_decimal(0), P.any_decimal().many(),
-                               lambda f, s: f + ''.join(s))
+        return P.either(P.first(P.is_decimal(0), P.no_match(P.any_decimal())),
+                        P.map2(P.is_not_decimal(0), P.word(P.any_decimal()),
+                               lambda f, s: f + s)
                         ).fmap(int)
 
     @staticmethod
@@ -394,10 +393,10 @@ class P(Generic[T]):
         return self.between(P.is_char('{'), P.is_char('}'))
 
     def trim_left(self) -> P[T]:
-        return P.snd(WHITE_SPACE, self)
+        return P.second(WHITE_SPACE, self)
 
     def trim_right(self) -> P[T]:
-        return P.fst(self, WHITE_SPACE)
+        return P.first(self, WHITE_SPACE)
 
     def trim(self) -> P[T]:
         return self.surround(WHITE_SPACE)

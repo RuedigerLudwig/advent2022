@@ -26,9 +26,9 @@ class Move:
     frm: int
     to: int
 
-    amount_parser: ClassVar[P[int]] = P.snd(P.string("move "), P.unsigned())
-    from_parser: ClassVar[P[int]] = P.snd(P.string(" from "), P.unsigned())
-    to_parser: ClassVar[P[int]] = P.snd(P.string(" to "), P.unsigned())
+    amount_parser: ClassVar[P[int]] = P.second(P.string("move "), P.unsigned())
+    from_parser: ClassVar[P[int]] = P.second(P.string(" from "), P.unsigned())
+    to_parser: ClassVar[P[int]] = P.second(P.string(" to "), P.unsigned())
     move_parser: ClassVar[P[tuple[int, int, int]]] = P.seq(amount_parser, from_parser, to_parser)
 
     @staticmethod
