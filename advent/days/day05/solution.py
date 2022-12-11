@@ -59,8 +59,8 @@ class Crane:
     is_9001: bool
 
     crate_parser: ClassVar[P[str | None]] = P.either(
-        P.one_char().in_brackets(), P.string("   ").replace(None))
-    crate_row_parser: ClassVar[P[list[str | None]]] = crate_parser.sep_by(P.is_char(' '))
+        P.any_char().in_brackets(), P.string("   ").replace(None))
+    crate_row_parser: ClassVar[P[list[str | None]]] = crate_parser.sep_by(P.char(' '))
 
     @classmethod
     def parse_crate_row(cls, line: str) -> list[None | str] | None:
