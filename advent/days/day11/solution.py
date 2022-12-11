@@ -23,9 +23,10 @@ def part2(lines: Iterator[str]) -> int:
 
 def worry_increaser(op: str, value: int | str) -> WorryIncreaser:
     match (op, value):
-        case '*', 'old': return lambda old: old * old
         case '*', int(v): return lambda old: old * v
+        case '*', 'old': return lambda old: old ** 2
         case '+', int(v): return lambda old: old + v
+        case '+', 'old': return lambda old: 2 * old
         case _: raise Exception(f"Illegal line: {op} {value}")
 
 
