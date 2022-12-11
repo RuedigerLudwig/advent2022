@@ -269,3 +269,19 @@ def test_word2():
     expected = [('123', 'a')]
     result = list(parser.parse_multi(input))
     assert result == expected
+
+
+def test_iterator_input():
+    input = iter(['1', '2'])
+    parser = P.unsigned().line().many()
+    expected = [1, 2]
+    result = parser.parse_iterator(input).get()
+    assert result == expected
+
+
+def test_iterator_trim_input():
+    input = iter(['1 ', '2 '])
+    parser = P.unsigned().trim().line().many()
+    expected = [1, 2]
+    result = parser.parse_iterator(input).get()
+    assert result == expected

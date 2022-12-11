@@ -40,16 +40,20 @@ def run(day: Day, part: int) -> None:
 def run_from_string(day_str: str) -> None:
     match day_str.split('/'):
         case [d]:
-            day = get_day(int(d))
+            day_num = int(d)
+            day = get_day(day_num)
 
-            run(day, 1)
-            run(day, 2)
+            if day_num == day.day_num:
+                run(day, 1)
+                run(day, 2)
 
         case [d, p]:
-            day = get_day(int(d))
-            part = int(p)
+            day_num = int(d)
+            day = get_day(day_num)
 
-            run(day, part)
+            if day_num == day.day_num:
+                part = int(p)
+                run(day, part)
 
         case _:
             raise Exception(f'{day_str} is not a valid day description')
@@ -61,8 +65,9 @@ def main() -> None:
             try:
                 for day_num in range(1, 25):
                     day = get_day(day_num)
-                    run(day, 1)
-                    run(day, 2)
+                    if day_num == day.day_num:
+                        run(day, 1)
+                        run(day, 2)
             except ModuleNotFoundError:
                 pass
 

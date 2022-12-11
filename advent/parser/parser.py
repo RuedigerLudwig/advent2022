@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import reduce
 from itertools import chain
-from typing import Any, Callable, Generic, Iterator, Self, TypeVar, overload
+from typing import Any, Callable, Generic, Iterator, Protocol, Self, TypeVar, overload
 import unicodedata
 
 from .result import Result
@@ -17,8 +17,16 @@ T5 = TypeVar('T5')
 TR = TypeVar('TR')
 
 
+class ParserInput(Protocol):
+    def step(self) -> tuple[Self, str]:
+        ...
+
+    def has_data(self) -> bool:
+        ...
+
+
 @dataclass(slots=True, frozen=True)
-class ParserInput:
+class SimpleParserInput:
     input: str
     start: int
 
@@ -26,7 +34,7 @@ class ParserInput:
         if self.start >= len(self.input):
             raise Exception("Already at End of Input")
 
-        return ParserInput(self.input, self.start + 1), self.input[self.start]
+        return SimpleParserInput(self.input, self.start + 1), self.input[self.start]
 
     def has_data(self) -> bool:
         return self.start < len(self.input)
@@ -41,6 +49,61 @@ class ParserInput:
         return f'{self.input[self.start-3:self.start-1]}->[{self.input[self.start:]}]'
 
 
+@dataclass(slots=True)
+class StringDispenser:
+    lines: Iterator[str]
+    input: str = field(default="", init=False)
+    length: int = field(default=0, init=False)
+
+    def read_more(self):
+        try:
+            part = next(self.lines)
+            if self.input:
+                self.input = f"{self.input}\n{part}"
+            else:
+                self.input = part
+            self.length = len(self.input)
+            return True
+        except StopIteration:
+            return False
+
+    def get_str(self, pos: int) -> str | None:
+        assert pos >= 0
+        if pos < self.length:
+            return self.input[pos]
+        elif pos == self.length and pos != 0:
+            return "\n"
+        elif self.read_more():
+            return self.get_str(pos)
+        else:
+            return None
+
+    def has_more(self, pos: int) -> bool:
+        assert pos >= 0
+        if pos <= self.length:
+            return True
+        elif self.read_more():
+            return self.has_more(pos)
+        else:
+            return False
+
+
+@dataclass(slots=True, frozen=True)
+class IteratorParserInput:
+    dispenser: StringDispenser
+    start: int
+
+    def step(self) -> tuple[Self, str]:
+        char = self.dispenser.get_str(self.start)
+        if char is None:
+            raise Exception("Already at End of Input")
+
+        return IteratorParserInput(self.dispenser, self.start + 1), char
+
+    def has_data(self) -> bool:
+        return self.dispenser.has_more(self.start)
+
+
 ParserResult = Iterator[tuple[ParserInput, T]]
 ParserFunc = Callable[[ParserInput], ParserResult[T]]
 
@@ -49,8 +112,16 @@ class P(Generic[T]):
     def __init__(self, func: ParserFunc[T]):
         self.func = func
 
-    def parse(self, s: str, i: int = 0) -> Result[T]:
-        all_results = self.func(ParserInput(s, i))
+    def parse(self, s: str) -> Result[T]:
+        all_results = self.func(SimpleParserInput(s, 0))
+        try:
+            _, result = next(all_results)
+            return Result.of(result)
+        except StopIteration:
+            return Result.fail("No result")
+
+    def parse_iterator(self, it: Iterator[str]) -> Result[T]:
+        all_results = self.func(IteratorParserInput(StringDispenser(it), 0))
         try:
             _, result = next(all_results)
             return Result.of(result)
@@ -58,7 +129,7 @@ class P(Generic[T]):
             return Result.fail("No result")
 
     def parse_multi(self, s: str, i: int = 0) -> Iterator[T]:
-        return (v for _, v in self.func(ParserInput(s, i)))
+        return (v for _, v in self.func(SimpleParserInput(s, i)))
 
     @classmethod
     def pure(cls, value: T) -> P[T]:
@@ -101,7 +172,7 @@ class P(Generic[T]):
     def replace(self, value: TR) -> P[TR]:
         return self.fmap(lambda _: value)
 
-    def as_unit(self) -> P[tuple[()]]:
+    def ignore(self) -> P[tuple[()]]:
         return self.fmap(lambda _: ())
 
     def apply(self, p2: P[Callable[[T], TR]]) -> P[TR]:
@@ -363,8 +434,16 @@ class P(Generic[T]):
         return P.char_func(lambda c: c == cmp)
 
     @classmethod
-    def string(cls, s: str) -> P[str]:
-        return P.seq(*map(P.char, s)).replace(s)
+    def string(cls, cmp: str) -> P[str]:
+        return P.seq(*map(P.char, cmp)).replace(cmp)
+
+    @classmethod
+    def tchar(cls, cmp: str) -> P[str]:
+        return P.char(cmp).trim()
+
+    @classmethod
+    def tstring(cls, cmp: str) -> P[str]:
+        return P.string(cmp).trim()
 
     @classmethod
     def one_of(cls, s: str) -> P[str]:
@@ -391,6 +470,10 @@ class P(Generic[T]):
         return P.char_func(lambda c: c.isupper())
 
     @classmethod
+    def eol(cls) -> P[tuple[()]]:
+        return P.char('\n').ignore()
+
+    @classmethod
     def space(cls) -> P[str]:
         return P.char_func(lambda c: c.isspace())
 
@@ -407,6 +490,20 @@ class P(Generic[T]):
     def signed(cls) -> P[int]:
         return P.map2(P.one_of('+-').optional(), P.unsigned(),
                       lambda sign, num: num if sign != '-' else -num)
+
+    @classmethod
+    def tunsigned(cls) -> P[int]:
+        return P.unsigned().trim()
+
+    @classmethod
+    def tsigned(cls) -> P[int]:
+        return P.signed().trim()
+
+    def line(self) -> P[T]:
+        return P.first(self, P.eol())
+
+    def tline(self) -> P[T]:
+        return P.first(self.trim(), P.eol())
 
     def in_parens(self) -> P[T]:
         return self.between(P.char('('), P.char(')'))
@@ -430,5 +527,5 @@ class P(Generic[T]):
         return self.between(WHITE_SPACE, WHITE_SPACE)
 
 
-WHITE_SPACE: P[tuple[()]] = P.space().many().as_unit()
-SEP_SPACE: P[tuple[()]] = P.space().some().as_unit()
+WHITE_SPACE: P[tuple[()]] = P.space().many().ignore()
+SEP_SPACE: P[tuple[()]] = P.space().some().ignore()
