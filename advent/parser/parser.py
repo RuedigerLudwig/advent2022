@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from functools import reduce
 from itertools import chain
-from typing import Any, Callable, Generic, Iterator, Protocol, Self, TypeVar, overload
+from typing import Any, Callable, Generic, Iterator, Self, TypeVar, overload
 import unicodedata
+
+from advent.parser.parser_input import AllowedParserInput, ParserInput, create_parser_input
 
 from .result import Result
 
@@ -17,93 +18,6 @@ T5 = TypeVar('T5')
 TR = TypeVar('TR')
 
 
-class ParserInput(Protocol):
-    def step(self) -> tuple[Self, str]:
-        ...
-
-    def has_data(self) -> bool:
-        ...
-
-
-@dataclass(slots=True, frozen=True)
-class SimpleParserInput:
-    input: str
-    start: int
-
-    def step(self) -> tuple[Self, str]:
-        if self.start >= len(self.input):
-            raise Exception("Already at End of Input")
-
-        return SimpleParserInput(self.input, self.start + 1), self.input[self.start]
-
-    def has_data(self) -> bool:
-        return self.start < len(self.input)
-
-    def __repr__(self) -> str:
-        if self.start == 0:
-            return f'->[{self.input}]'
-        if self.start >= len(self.input):
-            return f'{self.input}'
-        if self.start < 3:
-            return f'{self.input[0:self.start-1]}->[{self.input[self.start:]}]'
-        return f'{self.input[self.start-3:self.start-1]}->[{self.input[self.start:]}]'
-
-
-@dataclass(slots=True)
-class StringDispenser:
-    lines: Iterator[str]
-    input: str = field(default="", init=False)
-    length: int = field(default=0, init=False)
-
-    def read_more(self):
-        try:
-            part = next(self.lines)
-            if self.input:
-                self.input = f"{self.input}\n{part}"
-            else:
-                self.input = part
-            self.length = len(self.input)
-            return True
-        except StopIteration:
-            return False
-
-    def get_str(self, pos: int) -> str | None:
-        assert pos >= 0
-        if pos < self.length:
-            return self.input[pos]
-        elif pos == self.length and pos != 0:
-            return "\n"
-        elif self.read_more():
-            return self.get_str(pos)
-        else:
-            return None
-
-    def has_more(self, pos: int) -> bool:
-        assert pos >= 0
-        if pos <= self.length:
-            return True
-        elif self.read_more():
-            return self.has_more(pos)
-        else:
-            return False
-
-
-@dataclass(slots=True, frozen=True)
-class IteratorParserInput:
-    dispenser: StringDispenser
-    start: int
-
-    def step(self) -> tuple[Self, str]:
-        char = self.dispenser.get_str(self.start)
-        if char is None:
-            raise Exception("Already at End of Input")
-
-        return IteratorParserInput(self.dispenser, self.start + 1), char
-
-    def has_data(self) -> bool:
-        return self.dispenser.has_more(self.start)
-
-
 ParserResult = Iterator[tuple[ParserInput, T]]
 ParserFunc = Callable[[ParserInput], ParserResult[T]]
 
@@ -112,26 +26,20 @@ class P(Generic[T]):
     def __init__(self, func: ParserFunc[T]):
         self.func = func
 
-    def parse(self, input: str | Iterator[str]) -> Result[T]:
-        if isinstance(input, str):
-            parser_input = SimpleParserInput(input, 0)
-        else:
-            parser_input = IteratorParserInput(StringDispenser(input), 0)
-
+    def parse(self, input: AllowedParserInput) -> Result[T]:
+        parser_input = create_parser_input(input)
         all_results = self.func(parser_input)
+
         try:
             _, result = next(all_results)
             return Result.of(result)
         except StopIteration:
             return Result.fail("No result")
 
-    def parse_multi(self, input: str | Iterator[str]) -> Iterator[T]:
-        if isinstance(input, str):
-            parser_input = SimpleParserInput(input, 0)
-        else:
-            parser_input = IteratorParserInput(StringDispenser(input), 0)
-
+    def parse_multi(self, input: AllowedParserInput) -> Iterator[T]:
+        parser_input = create_parser_input(input)
         all_results = self.func(parser_input)
+
         return (v for _, v in all_results)
 
     @classmethod
