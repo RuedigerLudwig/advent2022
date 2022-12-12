@@ -53,7 +53,7 @@ class Parser:
                                worry_inc, test,
                                lambda number, items, worry_inc, test:
                                Monkey(number, items, worry_inc, *test))
-    monkey_list: P[list[Monkey]] = P.first(monkey, P.eol().optional()).many()
+    monkey_list: P[list[Monkey]] = P.second(P.eol().optional(), monkey).many()
 
 
 WorryIncreaser = Callable[[int], int]
@@ -111,7 +111,7 @@ class Troop_While_Worried(Troop):
     """ The """
     @classmethod
     def parse(cls, lines: Iterator[str]) -> Self:
-        monkeys = Parser.monkey_list.parse_iterator(lines).get()
+        monkeys = Parser.monkey_list.parse(lines).get()
         return Troop_While_Worried(monkeys)
 
     def single_round(self):
@@ -126,7 +126,7 @@ class Troop_While_Kinda_Relieved(Troop):
 
     @classmethod
     def parse(cls, lines: Iterator[str]) -> Self:
-        monkeys = Parser.monkey_list.parse_iterator(lines).get()
+        monkeys = Parser.monkey_list.parse(lines).get()
         return Troop_While_Kinda_Relieved(monkeys, prod(monkey.modulator for monkey in monkeys))
 
     def single_round(self):

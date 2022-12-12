@@ -112,24 +112,27 @@ class P(Generic[T]):
     def __init__(self, func: ParserFunc[T]):
         self.func = func
 
-    def parse(self, s: str) -> Result[T]:
-        all_results = self.func(SimpleParserInput(s, 0))
+    def parse(self, input: str | Iterator[str]) -> Result[T]:
+        if isinstance(input, str):
+            parser_input = SimpleParserInput(input, 0)
+        else:
+            parser_input = IteratorParserInput(StringDispenser(input), 0)
+
+        all_results = self.func(parser_input)
         try:
             _, result = next(all_results)
             return Result.of(result)
         except StopIteration:
             return Result.fail("No result")
 
-    def parse_iterator(self, it: Iterator[str]) -> Result[T]:
-        all_results = self.func(IteratorParserInput(StringDispenser(it), 0))
-        try:
-            _, result = next(all_results)
-            return Result.of(result)
-        except StopIteration:
-            return Result.fail("No result")
+    def parse_multi(self, input: str | Iterator[str]) -> Iterator[T]:
+        if isinstance(input, str):
+            parser_input = SimpleParserInput(input, 0)
+        else:
+            parser_input = IteratorParserInput(StringDispenser(input), 0)
 
-    def parse_multi(self, s: str, i: int = 0) -> Iterator[T]:
-        return (v for _, v in self.func(SimpleParserInput(s, i)))
+        all_results = self.func(parser_input)
+        return (v for _, v in all_results)
 
     @classmethod
     def pure(cls, value: T) -> P[T]:

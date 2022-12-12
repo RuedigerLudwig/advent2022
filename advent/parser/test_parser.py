@@ -275,7 +275,7 @@ def test_iterator_input():
     input = iter(['1', '2'])
     parser = P.unsigned().line().many()
     expected = [1, 2]
-    result = parser.parse_iterator(input).get()
+    result = parser.parse(input).get()
     assert result == expected
 
 
@@ -283,5 +283,5 @@ def test_iterator_trim_input():
     input = iter(['1 ', '2 '])
     parser = P.unsigned().trim().line().many()
     expected = [1, 2]
-    result = parser.parse_iterator(input).get()
+    result = parser.parse(input).get()
     assert result == expected
