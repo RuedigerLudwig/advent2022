@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from itertools import zip_longest
-from math import prod
 
 from typing import Iterator, Self
 
@@ -14,10 +13,19 @@ def part1(lines: Iterator[str]) -> int:
 
 
 def part2(lines: Iterator[str]) -> int:
-    marker = [PacketList([[2]]), PacketList([[6]])]
-    packet_lists = [PacketList.parse(line) for line in lines if line] + marker
+    """ Why sort if your can simply count?"""
+    marker2 = PacketList([[2]])
+    marker6 = PacketList([[6]])
 
-    return prod(pos for pos, lst in enumerate(sorted(packet_lists), start=1) if lst in marker)
+    p2 = 1
+    p6 = 1
+    for packet_list in (PacketList.parse(line) for line in lines if line):
+        if packet_list < marker2:
+            p2 += 1
+        elif packet_list < marker6:
+            p6 += 1
+
+    return p2 * (p2 + p6)
 
 
 ListOrInt = list["ListOrInt"] | int
@@ -32,8 +40,8 @@ class PacketList:
         """ Parses a sublist. Assumes that we do not find multiple commas, ot List in a row."""
         parsed: list[ListOrInt] = []
         number: int | None = None
-        while True:
-            match next(line_iter):
+        for character in line_iter:
+            match character:
                 case '[':
                     if number is not None:
                         raise Exception("Did not expect list")
@@ -49,15 +57,15 @@ class PacketList:
                         parsed.append(number)
                         number = None
 
-                case d if d in '0123456789':
-                    digit = ord(d) - ord('0')
+                case digit if digit.isdecimal():
                     if number is None:
-                        number = digit
+                        number = int(digit)
                     else:
-                        number = number * 10 + digit
+                        number = number * 10 + int(digit)
 
                 case c:
-                    raise Exception(f'Illegal Char: {c}')
+                    raise Exception(f"Illegal Character: {c}")
+        raise Exception("End of Input without reaching ']'")
 
     @classmethod
     def parse(cls, line: str) -> Self:
@@ -97,15 +105,8 @@ class PacketList:
                     if result is not None:
                         return result
 
-                case None, _:
-                    return True
-
-                case _, None:
-                    return False
-
                 case _:
-                    assert False, "unreachable"
-        return None
+                    return left_item is None
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PacketList):
@@ -117,9 +118,7 @@ class PacketList:
 
 
 def parse_single_pair(lines: Iterator[str]) -> tuple[PacketList, PacketList]:
-    first = PacketList.parse(next(lines))
-    second = PacketList.parse(next(lines))
-    return first, second
+    return PacketList.parse(next(lines)), PacketList.parse(next(lines))
 
 
 def parse_all_pairs(lines: Iterator[str]) -> list[tuple[PacketList, PacketList]]:
