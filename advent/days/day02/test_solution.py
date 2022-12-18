@@ -4,14 +4,14 @@ from .solution import day_num, part1, part2, Shape, Result
 
 
 def test_part1():
-    data = input.read_lines(day_num, 'test01.txt')
+    data = input.read_lines(day_num, 'example01.txt')
     expected = 15
     result = part1(data)
     assert result == expected
 
 
 def test_part2():
-    data = input.read_lines(day_num, 'test01.txt')
+    data = input.read_lines(day_num, 'example01.txt')
     expected = 12
     result = part2(data)
     assert result == expected

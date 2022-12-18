@@ -73,6 +73,14 @@ def test_between():
     assert result == expected
 
 
+def test_sep_by_single():
+    parser = P.signed().sep_by(P.char(','))
+    input = '2'
+    expected = [[2]]
+    result = list(parser.parse_multi(input))
+    assert result == expected
+
+
 def test_sep_by():
     parser = P.signed().sep_by(P.char(','))
     input = '2,3,5'

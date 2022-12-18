@@ -4,14 +4,14 @@ from .solution import CaveMap, FlooredCave, BottomLessCave, day_num, part1, part
 
 
 def test_part1():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     expected = 24
     result = part1(lines)
     assert result == expected
 
 
 def test_part2():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     expected = 93
     result = part2(lines)
     assert result == expected
@@ -41,13 +41,13 @@ def test_get_path2():
 
 
 def test_parser_test():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     cave = BottomLessCave.create(lines)
     assert cave.cave_map.max_depths == 9
 
 
 def test_drip():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     cave = BottomLessCave.create(lines)
     result = cave.drip()
     assert result is True
@@ -55,7 +55,7 @@ def test_drip():
 
 
 def test_drip2():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     cave = BottomLessCave.create(lines)
     cave.drip()
     cave.drip()
@@ -63,7 +63,7 @@ def test_drip2():
 
 
 def test_drip_forever():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     cave = BottomLessCave.create(lines)
     result = cave.drip_till_forever()
     expected = 24
@@ -71,7 +71,7 @@ def test_drip_forever():
 
 
 def test_drip_forever2():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     cave = FlooredCave.create(lines, floor=2)
     result = cave.drip_till_full()
     expected = 93
