@@ -4,14 +4,14 @@ from .solution import Sensor, SensorMap, day_num, part1, part2
 
 
 def test_part1():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     expected = 26
     result = part1(lines)
     assert result == expected
 
 
 def test_part2():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     expected = 56000011
     result = part2(lines)
     assert result == expected
@@ -32,7 +32,7 @@ def test_x_range():
 
 
 def test_impossible():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     next(lines)
     sensor_map = SensorMap.parse(lines)
     expected = 26
@@ -41,7 +41,7 @@ def test_impossible():
 
 
 def test_possible():
-    lines = input.read_lines(day_num, 'test01.txt')
+    lines = input.read_lines(day_num, 'example01.txt')
     next(lines)
     sensor_map = SensorMap.parse(lines)
     expected = 56000011

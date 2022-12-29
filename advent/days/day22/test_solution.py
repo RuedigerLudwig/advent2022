@@ -7,6 +7,7 @@ from .solution import (
     PasswordSimpleJungle,
     Player,
     Position2D,
+    Turn,
     Vector,
     day_num,
     part1,
@@ -41,7 +42,7 @@ def test_next():
     assert result == (10, 2)
 
     result = jungle.next_instruction(2)
-    assert result == ('R', 3)
+    assert result == (Turn.Right, 3)
 
     result = jungle.next_instruction(14)
     assert result == (5, 15)
@@ -103,19 +104,19 @@ def test_cube_info():
 
     person = Player(Position2D(14, 8), Facing.Up)
     result = jungle.get_cube_position(person)
-    assert result == (CubePosition(Vector(0, 1, 0), Vector(0, 0, 1)), 2)
+    assert result == (CubePosition(Vector(0, 1, 0), Vector(0, 0, -1)), 2)
 
     person = Player(Position2D(11, 5), Facing.Right)
     result = jungle.get_cube_position(person)
-    assert result == (CubePosition(Vector(0, 0, 1), Vector(0, 1, 0)), 2)
+    assert result == (CubePosition(Vector(0, 0, -1), Vector(0, 1, 0)), 1)
 
     person = Player(Position2D(1, 7), Facing.Down)
     result = jungle.get_cube_position(person)
-    assert result == (CubePosition(Vector(0, 0, -1), Vector(-1, 0, 0)), 2)
+    assert result == (CubePosition(Vector(0, 0, 1), Vector(-1, 0, 0)), 2)
 
     person = Player(Position2D(10, 11), Facing.Down)
     result = jungle.get_cube_position(person)
-    assert result == (CubePosition(Vector(-1, 0, 0), Vector(0, 0, -1)), 1)
+    assert result == (CubePosition(Vector(-1, 0, 0), Vector(0, 0, 1)), 1)
 
 
 def test_cube_wrap():
