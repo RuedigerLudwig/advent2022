@@ -304,7 +304,7 @@ class PasswordCubeJungle(PasswordJungle):
         return result
 
 
-@ dataclass(slots=True)
+@dataclass(slots=True)
 class PasswordSimpleJungle(PasswordJungle):
     def wrap(self, player: Player) -> Player:
         match player.facing:

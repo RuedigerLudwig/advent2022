@@ -83,7 +83,7 @@ class Cave:
             old = self.cave[block.y]
             self.cave[block.y] = old[:block.x] + '#' + old[block.x + 1:]
 
-    @ classmethod
+    @classmethod
     def create(cls, width: int, gas_pushes: str) -> Self:
         cave = []
         return cls(width, cave, cycle(gas_pushes), cycle(Pattern(pattern) for pattern in patterns))

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from itertools import product
 from queue import PriorityQueue
@@ -81,21 +81,21 @@ class Actor:
 class SystemProgress(ABC):
     max_time: int
     prev_time: int
-    next_time: int
+    time: int
     pressure: int
     flow_rate: int
     closed_valves: frozenset[Valve]
-    path: str
+    path: frozenset[tuple[str, int, bool]]
 
     def one_actor(self, actor: Actor) -> Iterator[Actor]:
-        if actor.finished or actor.next_time != self.next_time:
+        if actor.finished or actor.next_time != self.time:
             yield actor
         elif not self.closed_valves:
             yield Actor(actor.position, self.max_time, True)
         else:
             reached_any_target = False
             for target in self.closed_valves:
-                finished = self.next_time + actor.position.travel_time(target.name) + 1
+                finished = self.time + actor.position.travel_time(target.name) + 1
                 if finished < self.max_time:
                     reached_any_target = True
                     yield Actor(target, finished, False)
@@ -109,22 +109,19 @@ class SystemProgress(ABC):
         match num_actors:
             case 1:
                 return OneActorProgress(max_time, 0, 0, pressure, flow_rate, closed_valves,
-                                        start.name, Actor(start, 0, False))
+                                        frozenset(), Actor(start, 0, False))
             case 2:
                 return TwoActorProgress(max_time, 0, 0, pressure, flow_rate, closed_valves,
-                                        start.name, Actor(start, 0, False), Actor(start, 0, False))
+                                        frozenset(), Actor(start, 0, False), Actor(start, 0, False))
             case _:
                 assert False, "Unreachable"
 
     def __lt__(self, other: OneActorProgress) -> bool:
-        mx = min(self.next_time, other.next_time)
-        return self.pressure_at_time(mx) > other.pressure_at_time(mx)
+        if self.time != other.time:
+            return self.time < other.time
+        return self.pressure > other.pressure
 
     @abstractmethod
-    def pressure_at_time(self, time: int) -> int:
-        ...
-
-    @abstractproperty
     def max_possible_pressure(self) -> int:
         ...
 
@@ -137,38 +134,29 @@ class SystemProgress(ABC):
 class OneActorProgress(SystemProgress):
     actor: Actor
 
-    def pressure_at_time(self, time: int) -> int:
-        pressure = self.pressure + self.flow_rate * (time - self.prev_time)
-        if time > self.next_time:
-            pressure += self.actor.position.flow_rate * (time - self.actor.next_time + 1)
-        return pressure
-
-    @property
     def max_possible_pressure(self) -> int:
         closed = sum(valve.flow_rate for valve in self.closed_valves)
-        return self.pressure + (self.flow_rate + self.actor.position.flow_rate
-                                + closed) * (self.max_time - self.next_time)
+        return self.pressure + (self.flow_rate + closed) * (self.max_time - self.time)
 
     def open_valves(self) -> Iterator[SystemProgress]:
-        flow_rate = self.flow_rate + self.actor.position.flow_rate
-        pressure = self.pressure + self.flow_rate * (self.next_time - self.prev_time)
         for actor in self.one_actor(self.actor):
             closed_valves = self.closed_valves
             if not actor.finished:
                 closed_valves = closed_valves.difference({actor.position})
-            path = f"{self.path} {pressure=}\n" \
-                f"1: {actor.next_time}->{actor.position.name}\n" \
-                f"  +{actor.position.flow_rate}\n"
-            yield OneActorProgress(
+                flow_rate = self.flow_rate + actor.position.flow_rate
+            else:
+                flow_rate = self.flow_rate
+            next = OneActorProgress(
                 max_time=self.max_time,
-                prev_time=self.next_time,
-                next_time=actor.next_time,
+                prev_time=self.time,
+                time=actor.next_time,
                 flow_rate=flow_rate,
-                pressure=pressure,
+                pressure=self.pressure + self.flow_rate * (actor.next_time - self.time),
                 closed_valves=closed_valves,
                 actor=actor,
-                path=path
+                path=self.path | {(actor.position.name, actor.next_time, True)}
             )
+            yield next
 
 
 @dataclass(slots=True, frozen=True)
@@ -176,75 +164,68 @@ class TwoActorProgress(SystemProgress):
     actor1: Actor
     actor2: Actor
 
-    def pressure_at_time(self, time: int) -> int:
-        pressure = self.pressure + self.flow_rate * (time - self.prev_time)
-        if time > self.next_time:
-            if self.actor1.next_time <= time:
-                pressure += self.actor1.position.flow_rate * (time - self.actor1.next_time + 1)
-            if self.actor2.next_time <= time:
-                pressure += self.actor2.position.flow_rate * (time - self.actor2.next_time + 1)
-        return pressure
-
-    @property
     def max_possible_pressure(self) -> int:
-        closed = sum(valve.flow_rate for valve in self.closed_valves) * \
-            (self.max_time - self.next_time - 1)
-        flow = self.flow_rate * (self.max_time - self.next_time - 1)
-        if not self.actor1.finished:
-            actor1 = self.actor1.position.flow_rate * (self.max_time - self.actor1.next_time)
-        else:
-            actor1 = 0
-        if not self.actor2.finished:
-            actor2 = self.actor2.position.flow_rate * (self.max_time - self.actor2.next_time)
-        else:
-            actor2 = 0
-        return self.pressure + actor1 + actor2 + closed + flow
+        closed = sum(valve.flow_rate for valve in self.closed_valves)
+
+        other = 0
+        if self.actor1.next_time != self.time and not self.actor1.finished:
+            other += self.actor1.position.flow_rate * (self.max_time - self.actor1.next_time)
+        if self.actor2.next_time != self.time and not self.actor2.finished:
+            other += self.actor2.position.flow_rate * (self.max_time - self.actor2.next_time)
+
+        return self.pressure + (self.flow_rate + closed) * (self.max_time - self.time) + other
 
     def open_valves(self) -> Iterator[SystemProgress]:
-        pressure = self.pressure + self.flow_rate * (self.next_time - self.prev_time)
+        if self.actor1.next_time == self.time:
+            actor1_actions = self.one_actor(self.actor1)
+        else:
+            actor1_actions = [self.actor1]
 
-        flow_rate = self.flow_rate
-        if self.actor1.next_time == self.next_time:
-            flow_rate += self.actor1.position.flow_rate
-        if self.actor2.next_time == self.next_time:
-            flow_rate += self.actor2.position.flow_rate
-
-        actor1_actions = list(self.one_actor(self.actor1))
-        actor2_actions = list(self.one_actor(self.actor2))
+        if self.actor2.next_time == self.time:
+            actor2_actions = self.one_actor(self.actor2)
+        else:
+            actor2_actions = [self.actor2]
 
         for actor1, actor2 in product(actor1_actions, actor2_actions):
             if not actor1.finished and not actor2.finished and actor1.position == actor2.position:
                 continue
 
             closed_valves = self.closed_valves
-            if not actor1.finished:
-                closed_valves = closed_valves.difference({actor1.position})
-            if not actor2.finished:
-                closed_valves = closed_valves.difference({actor2.position})
-
+            flow_rate = self.flow_rate
             next_time = min(actor1.next_time, actor2.next_time)
 
-            path = self.path
-            next_flow = 0
-            if actor1.next_time == next_time:
-                path += f" -> (S:{actor1.next_time}/{actor1.position.name})"
-                next_flow += actor1.position.flow_rate
-            if actor2.next_time == next_time:
-                path += f" -> (E:{actor2.next_time}/{actor2.position.name})"
-                next_flow += actor2.position.flow_rate
-            next_flow = 0
+            path: set[tuple[str, int, bool]] = set(self.path)
 
-            yield TwoActorProgress(
+            if not actor1.finished:
+                closed_valves = closed_valves.difference({actor1.position})
+                if actor1.next_time == next_time:
+                    flow_rate += actor1.position.flow_rate
+                    path -= {(actor2.position.name, actor1.next_time, False)}
+                    path.add((actor1.position.name, actor1.next_time, True))
+                else:
+                    path.add((actor1.position.name, actor1.next_time, False))
+
+            if not actor2.finished:
+                closed_valves = closed_valves.difference({actor2.position})
+                if actor2.next_time == next_time:
+                    flow_rate += actor2.position.flow_rate
+                    path -= {(actor2.position.name, actor1.next_time, False)}
+                    path.add((actor2.position.name, actor2.next_time, True))
+                else:
+                    path.add((actor2.position.name, actor2.next_time, False))
+
+            next = TwoActorProgress(
                 max_time=self.max_time,
-                prev_time=self.next_time,
-                next_time=next_time,
+                prev_time=self.time,
+                time=next_time,
                 flow_rate=flow_rate,
-                pressure=pressure,
+                pressure=self.pressure + self.flow_rate * (next_time - self.time),
                 closed_valves=closed_valves,
-                path=path,
                 actor1=actor1,
                 actor2=actor2,
+                path=frozenset(path)
             )
+            yield next
 
 
 @dataclass(slots=True)
@@ -261,9 +242,7 @@ class Network:
             for follow in raw.following:
                 current.following.append(valves[follow])
 
-        network = Network(valves)
-        # network.create_paths()
-        return network
+        return Network(valves)
 
     def under_pressure(self, minutes: int, number_actors: Literal[1] | Literal[2]) -> int:
         closed_valves = [valve for valve in self.valves.values() if valve.flow_rate > 0]
@@ -277,23 +256,20 @@ class Network:
             start=start,
             num_actors=number_actors
         ))
-        max_system: SystemProgress | None = None
-        tick = 0
-        max_counter = 0
+        max_pressure = 0
+        seen: set[frozenset[tuple[str, int, bool]]] = set()
         while not queue.empty():
-            tick += 1
             current = queue.get()
-            if current.next_time == minutes:
-                if max_system is None or max_system.pressure < current.pressure:
-                    max_system = current
-                    max_counter += 1
+            if current.time == minutes:
+                return current.pressure
+            if max_pressure > current.max_possible_pressure():
                 continue
+            if current.path in seen:
+                continue
+            seen.add(current.path)
+            max_pressure = max(max_pressure, current.pressure)
 
             for next in current.open_valves():
-                if max_system is None or next.max_possible_pressure >= max_system.pressure:
-                    queue.put(next)
+                queue.put(next)
 
-        if max_system is None:
-            raise Exception("No best System found")
-
-        return max_system.pressure
+        raise Exception("No best System found")
