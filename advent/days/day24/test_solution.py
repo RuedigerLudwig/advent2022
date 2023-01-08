@@ -1,4 +1,5 @@
 from advent.common import input
+from advent.common.position import Position
 
 from .solution import BlizTuple, Valley, day_num, part1, part2
 
@@ -20,9 +21,9 @@ def test_part2():
 def test_parse_line():
     input = "#>>.<^<#"
     expected: BlizTuple = (
-        [(0, 0), (1, 0)],
-        [(4, 0)],
-        [(3, 0), (5, 0)],
+        [Position(0, 0), Position(1, 0)],
+        [Position(4, 0)],
+        [Position(3, 0), Position(5, 0)],
         [])
     result = Valley.parse_line(([], [], [], []), input, 0)
     assert result == expected

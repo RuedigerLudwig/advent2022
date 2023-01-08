@@ -5,6 +5,8 @@ from itertools import count, cycle
 
 from typing import Iterator
 
+from advent.common.position import Position
+
 day_num = 23
 
 
@@ -37,59 +39,56 @@ class Direction(Enum):
 
 
 @dataclass(slots=True, frozen=True)
-class Position:
-    x: int
-    y: int
-
-    def get_adjacent(self, direction: Direction) -> Iterator[Position]:
+class ElfPosition(Position):
+    def get_adjacent(self, direction: Direction) -> Iterator[ElfPosition]:
         match direction:
             case Direction.North:
-                yield Position(self.x - 1, self.y - 1)
-                yield Position(self.x, self.y - 1)
-                yield Position(self.x + 1, self.y - 1)
+                yield ElfPosition(self.x - 1, self.y - 1)
+                yield ElfPosition(self.x, self.y - 1)
+                yield ElfPosition(self.x + 1, self.y - 1)
             case Direction.South:
-                yield Position(self.x - 1, self.y + 1)
-                yield Position(self.x, self.y + 1)
-                yield Position(self.x + 1, self.y + 1)
+                yield ElfPosition(self.x - 1, self.y + 1)
+                yield ElfPosition(self.x, self.y + 1)
+                yield ElfPosition(self.x + 1, self.y + 1)
             case Direction.West:
-                yield Position(self.x - 1, self.y - 1)
-                yield Position(self.x - 1, self.y)
-                yield Position(self.x - 1, self.y + 1)
+                yield ElfPosition(self.x - 1, self.y - 1)
+                yield ElfPosition(self.x - 1, self.y)
+                yield ElfPosition(self.x - 1, self.y + 1)
             case Direction.East:
-                yield Position(self.x + 1, self.y - 1)
-                yield Position(self.x + 1, self.y)
-                yield Position(self.x + 1, self.y + 1)
+                yield ElfPosition(self.x + 1, self.y - 1)
+                yield ElfPosition(self.x + 1, self.y)
+                yield ElfPosition(self.x + 1, self.y + 1)
 
-    def get_all_adjacent(self) -> Iterator[Position]:
+    def get_all_adjacent(self) -> Iterator[ElfPosition]:
         for y in range(-1, 2):
             for x in range(-1, 2):
                 if x != 0 or y != 0:
-                    yield Position(self.x + x, self.y + y)
+                    yield ElfPosition(self.x + x, self.y + y)
 
-    def walk(self, direction: Direction) -> Position:
+    def walk(self, direction: Direction) -> ElfPosition:
         match direction:
-            case Direction.North: return Position(self.x, self.y - 1)
-            case Direction.South: return Position(self.x, self.y + 1)
-            case Direction.West: return Position(self.x - 1, self.y)
-            case Direction.East: return Position(self.x + 1, self.y)
+            case Direction.North: return ElfPosition(self.x, self.y - 1)
+            case Direction.South: return ElfPosition(self.x, self.y + 1)
+            case Direction.West: return ElfPosition(self.x - 1, self.y)
+            case Direction.East: return ElfPosition(self.x + 1, self.y)
 
-    def min(self, other: Position) -> Position:
-        return Position(min(self.x, other.x), min(self.y, other.y))
+    def min(self, other: ElfPosition) -> ElfPosition:
+        return ElfPosition(min(self.x, other.x), min(self.y, other.y))
 
-    def max(self, other: Position) -> Position:
-        return Position(max(self.x, other.x), max(self.y, other.y))
+    def max(self, other: ElfPosition) -> ElfPosition:
+        return ElfPosition(max(self.x, other.x), max(self.y, other.y))
 
 
 @dataclass(slots=True)
 class Ground:
-    map: set[Position]
+    map: set[ElfPosition]
 
     def __str__(self) -> str:
         min_pos, max_pos = self.extent()
         result = ""
         for y in range(min_pos.y, max_pos.y + 1):
             for x in range(min_pos.x, max_pos.x + 1):
-                if Position(x, y) in self.map:
+                if ElfPosition(x, y) in self.map:
                     result += '#'
                 else:
                     result += '.'
@@ -102,14 +101,14 @@ class Ground:
 
     @classmethod
     def parse(cls, lines: Iterator[str]) -> Ground:
-        map: set[Position] = set()
+        map: set[ElfPosition] = set()
         for y, line in enumerate(lines):
             for x, tile in enumerate(line):
                 if tile == '#':
-                    map.add(Position(x, y))
+                    map.add(ElfPosition(x, y))
         return Ground(map)
 
-    def extent(self) -> tuple[Position, Position]:
+    def extent(self) -> tuple[ElfPosition, ElfPosition]:
         min_pos = next(iter(self.map))
         max_pos = min_pos
         for elf in self.map:
@@ -126,8 +125,8 @@ class Ground:
 
         for n in it:
             start = next(start_dispenser)
-            target_map: dict[Position, Position] = {}
-            target_count: dict[Position, int] = {}
+            target_map: dict[ElfPosition, ElfPosition] = {}
+            target_count: dict[ElfPosition, int] = {}
             for elf in self.map:
                 if all(pos not in self.map for pos in elf.get_all_adjacent()):
                     continue

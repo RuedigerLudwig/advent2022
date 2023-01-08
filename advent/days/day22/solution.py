@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from advent.common.position import UNIT_NEG_X, UNIT_NEG_Y, UNIT_X, UNIT_Y, Position
 from enum import Enum
 
 from typing import Iterator, Self
@@ -44,29 +45,17 @@ class Facing(Enum):
                     case Facing.Left: return Facing.Up
                     case Facing.Down: return Facing.Left
 
-    def as_position(self) -> Position2D:
+    def as_position(self) -> Position:
         match self:
-            case Facing.Right: return Position2D(1, 0)
-            case Facing.Up: return Position2D(0, -1)
-            case Facing.Left: return Position2D(-1, 0)
-            case Facing.Down: return Position2D(0, 1)
-
-
-@dataclass(slots=True, frozen=True)
-class Position2D:
-    x: int
-    y: int
-
-    def __add__(self, other: Position2D) -> Position2D:
-        return Position2D(self.x + other.x, self.y + other.y)
-
-    def __mul__(self, factor: int) -> Position2D:
-        return Position2D(self.x * factor, self.y * factor)
+            case Facing.Right: return UNIT_X
+            case Facing.Up: return UNIT_NEG_Y
+            case Facing.Left: return UNIT_NEG_X
+            case Facing.Down: return UNIT_Y
 
 
 @dataclass(slots=True, frozen=True)
 class Player:
-    position: Position2D
+    position: Position
     facing: Facing
 
     @property
@@ -113,35 +102,35 @@ class PasswordJungle(ABC):
                 return val, start
             case _: raise Exception("Illegal char")
 
-    def start(self) -> tuple[Position2D, Facing]:
+    def start(self) -> tuple[Position, Facing]:
         return self.start_column(0), Facing.Right
 
-    def start_column(self, row: int) -> Position2D:
+    def start_column(self, row: int) -> Position:
         for col, char in enumerate(self.map[row]):
             if char != ' ':
-                return Position2D(col, row)
+                return Position(col, row)
         raise Exception("Empty row found")
 
-    def end_column(self, row: int) -> Position2D:
+    def end_column(self, row: int) -> Position:
         for col in range(len(self.map[row]) - 1, -1, -1):
             if self.map[row][col] != ' ':
-                return Position2D(col, row)
+                return Position(col, row)
         raise Exception("Empty row found")
 
-    def start_row(self, col: int) -> Position2D:
+    def start_row(self, col: int) -> Position:
         for row, line in enumerate(self.map):
             if col < len(line) and line[col] != ' ':
-                return Position2D(col, row)
+                return Position(col, row)
         raise Exception("Empty row found")
 
-    def end_row(self, col: int) -> Position2D:
+    def end_row(self, col: int) -> Position:
         for row in range(len(self.map) - 1, -1, -1):
             line = self.map[row]
             if col < len(line) and line[col] != ' ':
-                return Position2D(col, row)
+                return Position(col, row)
         raise Exception("Empty row found")
 
-    def check_tile(self, pos: Position2D) -> str:
+    def check_tile(self, pos: Position) -> str:
         if pos.y not in range(0, len(self.map)) or pos.x not in range(0, len(self.map[pos.y])):
             return ' '
         return self.map[pos.y][pos.x]
@@ -216,9 +205,9 @@ class CubePosition:
 @dataclass(slots=True)
 class PasswordCubeJungle(PasswordJungle):
     cube_width: int = field(default=50, init=False)
-    sides: dict[Vector, tuple[Position2D, Vector]] = field(default_factory=dict, init=False)
+    sides: dict[Vector, tuple[Position, Vector]] = field(default_factory=dict, init=False)
 
-    def _find_neighbors(self, map_position: Position2D, facing: Facing,
+    def _find_neighbors(self, map_position: Position, facing: Facing,
                         cube_position: CubePosition):
         match facing:
             case Facing.Right: facing_right = cube_position.facing
@@ -300,7 +289,7 @@ class PasswordCubeJungle(PasswordJungle):
             y = position.y
             x = position.x + self.cube_width - 1 - delta
 
-        result = Player(Position2D(x, y), facing)
+        result = Player(Position(x, y), facing)
         return result
 
 

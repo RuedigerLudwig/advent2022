@@ -8,17 +8,17 @@ day_num = 18
 
 
 def part1(lines: Iterator[str]) -> int:
-    shower = Shower.create(Position.parse_all(lines))
+    shower = Shower.create(Position3D.parse_all(lines))
     return shower.faces
 
 
 def part2(lines: Iterator[str]) -> int:
-    shower = Shower.create(Position.parse_all(lines))
+    shower = Shower.create(Position3D.parse_all(lines))
     return shower.faces - shower.count_trapped_droplets()
 
 
 @dataclass(slots=True, frozen=True)
-class Position:
+class Position3D:
     x: int
     y: int
     z: int
@@ -26,32 +26,32 @@ class Position:
     @classmethod
     def parse(cls, line: str) -> Self:
         x, y, z = line.split(",")
-        return Position(int(x), int(y), int(z))
+        return Position3D(int(x), int(y), int(z))
 
     @classmethod
     def parse_all(cls, lines: Iterable[str]) -> Iterator[Self]:
         return (cls.parse(line) for line in lines)
 
-    def neighbors(self) -> Iterator[Position]:
-        yield Position(self.x + 1, self.y, self.z)
-        yield Position(self.x - 1, self.y, self.z)
-        yield Position(self.x, self.y + 1, self.z)
-        yield Position(self.x, self.y - 1, self.z)
-        yield Position(self.x, self.y, self.z + 1)
-        yield Position(self.x, self.y, self.z - 1)
+    def neighbors(self) -> Iterator[Position3D]:
+        yield Position3D(self.x + 1, self.y, self.z)
+        yield Position3D(self.x - 1, self.y, self.z)
+        yield Position3D(self.x, self.y + 1, self.z)
+        yield Position3D(self.x, self.y - 1, self.z)
+        yield Position3D(self.x, self.y, self.z + 1)
+        yield Position3D(self.x, self.y, self.z - 1)
 
-    def min_max(self, mm: tuple[Position, Position] | None) -> tuple[Position, Position]:
+    def min_max(self, mm: tuple[Position3D, Position3D] | None) -> tuple[Position3D, Position3D]:
         if mm is None:
             return self, self
 
-        return (Position(min(mm[0].x, self.x),
-                         min(mm[0].y, self.y),
-                         min(mm[0].z, self.z)),
-                Position(max(mm[1].x, self.x),
-                         max(mm[1].y, self.y),
-                         max(mm[1].z, self.z)))
+        return (Position3D(min(mm[0].x, self.x),
+                           min(mm[0].y, self.y),
+                           min(mm[0].z, self.z)),
+                Position3D(max(mm[1].x, self.x),
+                           max(mm[1].y, self.y),
+                           max(mm[1].z, self.z)))
 
-    def is_between(self, min: Position, max: Position) -> bool:
+    def is_between(self, min: Position3D, max: Position3D) -> bool:
         return (min.x <= self.x <= max.x
                 and min.y <= self.y <= max.y
                 and min.z <= self.z <= max.z)
@@ -65,12 +65,12 @@ class DropletType(Enum):
 
 @dataclass(slots=True, frozen=True)
 class Shower:
-    droplets: dict[Position, tuple[DropletType, int]]
+    droplets: dict[Position3D, tuple[DropletType, int]]
     faces: int
 
     @classmethod
-    def create(cls, positions: Iterable[Position]) -> Self:
-        droplets: dict[Position, tuple[DropletType, int]] = {}
+    def create(cls, positions: Iterable[Position3D]) -> Self:
+        droplets: dict[Position3D, tuple[DropletType, int]] = {}
         faces = 0
         for position in positions:
             candidate = droplets.get(position)
@@ -95,14 +95,14 @@ class Shower:
 
     def count_trapped_droplets(self) -> int:
         droplets = self.droplets.copy()
-        minmax: tuple[Position, Position] | None = None
+        minmax: tuple[Position3D, Position3D] | None = None
         for position in droplets.keys():
             minmax = position.min_max(minmax)
         if minmax is None:
             raise Exception("I got no data to work with")
         min_values, max_values = minmax
 
-        todo: list[Position] = [min_values]
+        todo: list[Position3D] = [min_values]
         while todo:
             current = todo[0]
             todo = todo[1:]

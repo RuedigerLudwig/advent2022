@@ -4,6 +4,8 @@ from queue import Queue
 
 from typing import Iterator, Self
 
+from advent.common.position import ORIGIN, Position
+
 day_num = 12
 
 
@@ -15,34 +17,17 @@ def part2(lines: Iterator[str]) -> int:
     return Map.create(lines).find_path('a')
 
 
-@dataclass(frozen=True, slots=True, order=True, eq=True)
-class Position:
-    x: int
-    y: int
-
-    def neighbors(self, width: int, height: int) -> Iterator[Position]:
-        if self.x < width - 1:
-            yield Position(self.x + 1, self.y)
-        if self.y > 0:
-            yield Position(self.x, self.y - 1)
-        if self.x > 0:
-            yield Position(self.x - 1, self.y)
-        if self.y < height - 1:
-            yield Position(self.x, self.y + 1)
-
-
 @dataclass(slots=True, frozen=True)
 class Map:
     map: list[str]
-    width: int
-    height: int
+    bottom_right: Position
 
     @classmethod
     def create(cls, input: Iterator[str]) -> Self:
         map = list(input)
         width = len(map[0])
         height = len(map)
-        return Map(map, width, height)
+        return Map(map, Position(width, height))
 
     def can_climb(self, *, from_pos: Position, to_pos: Position) -> bool:
         """ Checks if one gan walk from the elevation at from_pos to the elevation at to_pos """
@@ -88,6 +73,7 @@ class Map:
 
     def next_step(self, current_pos: Position) -> Iterator[Position]:
         """ yields all neighbors, that could have been the previous step to this one"""
-        for neighbor in current_pos.neighbors(self.width, self.height):
-            if self.can_climb(from_pos=neighbor, to_pos=current_pos):
+        for neighbor in current_pos.unit_neighbors():
+            if (neighbor.is_within(ORIGIN, self.bottom_right)
+                    and self.can_climb(from_pos=neighbor, to_pos=current_pos)):
                 yield neighbor

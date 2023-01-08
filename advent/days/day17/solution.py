@@ -4,6 +4,8 @@ from itertools import cycle
 
 from typing import Iterator, Self
 
+from advent.common.position import Position
+
 day_num = 17
 
 
@@ -26,21 +28,6 @@ patterns = [["####"],
 
 
 @dataclass(slots=True, frozen=True)
-class Position:
-    x: int
-    y: int
-
-    def left(self) -> Position:
-        return Position(self.x - 1, self.y)
-
-    def right(self) -> Position:
-        return Position(self.x + 1, self.y)
-
-    def down(self) -> Position:
-        return Position(self.x, self.y - 1)
-
-
-@dataclass(slots=True, frozen=True)
 class Pattern:
     lines: list[str]
 
@@ -52,11 +39,11 @@ class Pattern:
     def width(self) -> int:
         return len(self.lines[0])
 
-    def stones(self, position: Position) -> Iterator[Position]:
+    def stones(self, offset: Position) -> Iterator[Position]:
         for y, line in enumerate(self.lines):
             for x, block in enumerate(line):
                 if block == "#":
-                    yield Position(position.x + x, position.y + y)
+                    yield Position(offset.x + x, offset.y + y)
 
 
 @dataclass(slots=True)
@@ -93,17 +80,21 @@ class Cave:
         position = Position(2, len(self.cave) + 3)
 
         while True:
-            push = next(self.gas_pushes)
-            if push == '<':
-                if position.x > 0 and self.check_free(rock, position.left()):
-                    position = position.left()
-            else:
-                if (position.x + rock.width < self.width
-                        and self.check_free(rock, position.right())):
-                    position = position.right()
+            match next(self.gas_pushes):
+                case '<':
+                    next_pos = position.left()
+                    if next_pos.x >= 0 and self.check_free(rock, next_pos):
+                        position = next_pos
+                case '>':
+                    next_pos = position.right()
+                    if (next_pos.x + rock.width <= self.width
+                            and self.check_free(rock, next_pos)):
+                        position = next_pos
+                case c: raise Exception(f"Illegal char: {c}")
 
-            if position.y > 0 and self.check_free(rock, position.down()):
-                position = position.down()
+            next_pos = position.up()
+            if next_pos.y >= 0 and self.check_free(rock, next_pos):
+                position = next_pos
             else:
                 self.fix_rock(rock, position)
                 return rock, position

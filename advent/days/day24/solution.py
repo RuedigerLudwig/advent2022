@@ -5,6 +5,8 @@ from queue import PriorityQueue
 
 from typing import Iterator
 
+from advent.common.position import UNIT_NEG_X, UNIT_NEG_Y, UNIT_X, UNIT_Y, Position
+
 
 day_num = 24
 
@@ -32,7 +34,6 @@ def lcm(num1: int, num2: int) -> int:
     return num1 * num2 // gcd(num1, num2)
 
 
-Position = tuple[int, int]
 BlizList = list[Position]
 BlizTuple = tuple[BlizList, BlizList, BlizList, BlizList]
 
@@ -54,10 +55,10 @@ class Direction(IntEnum):
 
     def position(self) -> Position:
         match self:
-            case Direction.East: return 1, 0
-            case Direction.North: return 0, -1
-            case Direction.West: return -1, 0
-            case Direction.South: return 0, 1
+            case Direction.East: return UNIT_X
+            case Direction.North: return UNIT_NEG_Y
+            case Direction.West: return UNIT_NEG_X
+            case Direction.South: return UNIT_Y
 
     @property
     def char(self) -> str:
@@ -77,10 +78,10 @@ class Weather:
     def print(self, time: int) -> list[str]:
         current = self.blizzards[self.normal_time(time)]
         lines: list[str] = []
-        for row in range(self.extent[1]):
+        for row in range(self.extent.y):
             line = ""
-            for col in range(self.extent[0]):
-                if (char := current.get((col, row))) is not None:
+            for col in range(self.extent.x):
+                if (char := current.get(Position(col, row))) is not None:
                     line += char
                 else:
                     line += '.'
@@ -95,7 +96,7 @@ class Weather:
 
     @classmethod
     def predict_weather(cls, blizzards: BlizTuple, extent: Position) -> Weather:
-        repeat = lcm(extent[0], extent[1])
+        repeat = lcm(extent.x, extent.y)
         weather: list[dict[Position, str]] = [Weather.create_dict(blizzards)]
         for _ in range(repeat - 1):
             blizzards = Weather.progress_blizzards(blizzards, extent)
@@ -108,9 +109,9 @@ class Weather:
         add = Direction.East.position()
         result: BlizList = []
         for pos in blizzards:
-            next_pos = pos[0] + add[0], pos[1] + add[1]
-            if next_pos[0] >= extent[0]:
-                next_pos = 0, next_pos[1]
+            next_pos = pos + add
+            if next_pos.x >= extent.x:
+                next_pos = next_pos.set_x(0)
             result.append(next_pos)
 
         return result
@@ -120,9 +121,9 @@ class Weather:
         add = Direction.West.position()
         result: BlizList = []
         for pos in blizzards:
-            next_pos = pos[0] + add[0], pos[1] + add[1]
-            if next_pos[0] < 0:
-                next_pos = extent[0] - 1, next_pos[1]
+            next_pos = pos + add
+            if next_pos.x < 0:
+                next_pos = next_pos.set_x(extent.x - 1)
             result.append(next_pos)
 
         return result
@@ -132,9 +133,9 @@ class Weather:
         add = Direction.South.position()
         result: BlizList = []
         for pos in blizzards:
-            next_pos = pos[0] + add[0], pos[1] + add[1]
-            if next_pos[1] >= extent[1]:
-                next_pos = next_pos[0], 0
+            next_pos = pos + add
+            if next_pos.y >= extent.y:
+                next_pos = next_pos.set_y(0)
             result.append(next_pos)
 
         return result
@@ -144,9 +145,9 @@ class Weather:
         add = Direction.North.position()
         result: BlizList = []
         for pos in blizzards:
-            next_pos = pos[0] + add[0], pos[1] + add[1]
-            if next_pos[1] < 0:
-                next_pos = next_pos[0], extent[1] - 1
+            next_pos = pos + add
+            if next_pos.y < 0:
+                next_pos = next_pos.set_y(extent.y - 1)
             result.append(next_pos)
 
         return result
@@ -206,7 +207,7 @@ class Valley:
                 case '#':
                     return blizzards
                 case '>' | '^' | '<' | 'v':
-                    blizzards = Valley.append(blizzards, Direction.create(char), (col, row))
+                    blizzards = Valley.append(blizzards, Direction.create(char), Position(col, row))
                 case '.':
                     pass
                 case _:
@@ -223,9 +224,9 @@ class Valley:
         for row, line in enumerate(lines):
             if line.startswith("##"):
                 end_col = Valley._get_wallbreak(line)
-                extent = width, row
+                extent = Position(width, row)
                 return Valley(Weather.predict_weather(blizzards, extent), extent,
-                              (start_col, -1), (end_col, row))
+                              Position(start_col, -1), Position(end_col, row))
             else:
                 blizzards = Valley.parse_line(blizzards, line, row)
         assert False, "Unreachable"
@@ -234,8 +235,8 @@ class Valley:
         return '\n'.join(self.print(0))
 
     def print(self, time: int) -> list[str]:
-        first = '#' + ('#' * self.start[0]) + '.' + ('#' * (self.extent[0] - self.start[0]))
-        last = '#' + ('#' * self.exit[0]) + '.' + ('#' * (self.extent[0] - self.exit[0]))
+        first = '#' + ('#' * self.start.x) + '.' + ('#' * (self.extent.x - self.start.x))
+        last = '#' + ('#' * self.exit.x) + '.' + ('#' * (self.extent.x - self.exit.x))
         lines = self.weather.print(time)
         lines = [first] + ['#' + line + '#' for line in lines] + [last]
         return lines
@@ -284,9 +285,9 @@ class Step:
     def print(self) -> list[str]:
         lines = self.valley.print(self.time)
 
-        line = lines[self.position[1] + 1]
-        lines[self.position[1] + 1] = line[:self.position[0] + 1] + \
-            'E' + line[self.position[0] + 2:]
+        line = lines[self.position.y + 1]
+        lines[self.position.y + 1] = line[:self.position.x + 1] + \
+            'E' + line[self.position.x + 2:]
 
         return lines
 
@@ -326,11 +327,11 @@ class Step:
 
         for dir in Direction:
             add = dir.position()
-            next_position = self.position[0] + add[0], self.position[1] + add[1]
+            next_position = self.position + add
             if next_position == self.target:
                 yield self.reach_target()
 
-            elif (0 <= next_position[0] < self.valley.extent[0]
-                    and 0 <= next_position[1] < self.valley.extent[1]):
+            elif (0 <= next_position.x < self.valley.extent.x
+                    and 0 <= next_position.y < self.valley.extent.y):
                 if next_position not in impassable:
                     yield self.move(next_position)

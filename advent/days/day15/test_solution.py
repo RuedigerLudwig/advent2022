@@ -1,4 +1,5 @@
 from advent.common import input
+from advent.common.position import Position
 
 from .solution import Sensor, SensorMap, day_num, part1, part2
 
@@ -19,7 +20,7 @@ def test_part2():
 
 def test_parse():
     input = "Sensor at x=2, y=18: closest beacon is at x=-2, y=15"
-    expected = Sensor((2, 18), 7), (-2, 15)
+    expected = Sensor(Position(2, 18), 7), Position(-2, 15)
     result = Sensor.parse(input)
     assert result == expected
 

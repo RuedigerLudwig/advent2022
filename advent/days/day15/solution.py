@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 from typing import Iterator, Self
 
+from advent.common.position import Position
+
 day_num = 15
 
 
@@ -18,7 +20,6 @@ def part2(lines: Iterator[str]) -> int:
     return sensor_map.get_possible_frequency(int(max_range))
 
 
-Position = tuple[int, int]
 ColRange = tuple[int, int]
 
 
@@ -30,21 +31,17 @@ class Sensor:
     @classmethod
     def parse(cls, line: str) -> tuple[Self, Position]:
         parts = line.split('=')
-        sensor = int(parts[1].split(',')[0].strip()), int(parts[2].split(':')[0].strip())
-        beacon = int(parts[3].split(',')[0].strip()), int(parts[4].strip())
-        return cls(sensor, Sensor.manhatten(sensor, beacon)), beacon
-
-    @classmethod
-    def manhatten(cls, first: Position, other: Position) -> int:
-        return abs(first[0] - other[0]) + abs(first[1] - other[1])
+        sensor = Position(int(parts[1].split(',')[0].strip()), int(parts[2].split(':')[0].strip()))
+        beacon = Position(int(parts[3].split(',')[0].strip()), int(parts[4].strip()))
+        return cls(sensor, sensor.taxicab_distance(beacon)), beacon
 
     def col_range_at_row(self, row: int) -> ColRange | None:
-        col_distance = self.distance - abs(self.sensor[1] - row)
+        col_distance = self.distance - abs(self.sensor.y - row)
         if col_distance < 0:
             return None
 
-        from_x = self.sensor[0] - col_distance
-        to_x = self.sensor[0] + col_distance
+        from_x = self.sensor.x - col_distance
+        to_x = self.sensor.x + col_distance
 
         return from_x, to_x
 
@@ -93,7 +90,7 @@ class SensorMap:
         col_ranges = self.get_impossible(row)
 
         seen = sum(rng[1] - rng[0] + 1 for rng in SensorMap.merged_col_ranges(col_ranges))
-        beacons = len({beacon[0] for beacon in self.beacons if beacon[1] == row})
+        beacons = len({beacon.x for beacon in self.beacons if beacon.y == row})
 
         return seen - beacons
 
@@ -105,7 +102,7 @@ class SensorMap:
             for one0, one1 in col_ranges:
                 if curr1 < one1:
                     if curr1 < one0:
-                        return curr1 + 1, row
+                        return Position(curr1 + 1, row)
                     if one1 > max_range:
                         break
                     curr1 = one1

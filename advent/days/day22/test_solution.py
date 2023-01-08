@@ -6,7 +6,7 @@ from .solution import (
     PasswordCubeJungle,
     PasswordSimpleJungle,
     Player,
-    Position2D,
+    Position,
     Turn,
     Vector,
     day_num,
@@ -56,39 +56,39 @@ def test_positions():
     jungle = PasswordSimpleJungle.create(lines)
 
     result = jungle.start_column(0)
-    assert result == Position2D(8, 0)
+    assert result == Position(8, 0)
 
     result = jungle.start_row(0)
-    assert result == Position2D(0, 4)
+    assert result == Position(0, 4)
 
     result = jungle.end_column(4)
-    assert result == Position2D(11, 4)
+    assert result == Position(11, 4)
 
     result = jungle.end_row(4)
-    assert result == Position2D(4, 7)
+    assert result == Position(4, 7)
 
     result = jungle.start_row(8)
-    assert result == Position2D(8, 0)
+    assert result == Position(8, 0)
 
 
 def test_step():
     lines = input.read_lines(day_num, 'example01.txt')
     jungle = PasswordSimpleJungle.create(lines)
-    person = jungle.step(Player(Position2D(8, 0), Facing.Right), 10)
-    assert person == Player(Position2D(10, 0), Facing.Right)
+    person = jungle.step(Player(Position(8, 0), Facing.Right), 10)
+    assert person == Player(Position(10, 0), Facing.Right)
 
-    person = jungle.step(Player(Position2D(10, 0), Facing.Down), 5)
-    assert person == Player(Position2D(10, 5), Facing.Down)
+    person = jungle.step(Player(Position(10, 0), Facing.Down), 5)
+    assert person == Player(Position(10, 5), Facing.Down)
 
-    person = jungle.step(Player(Position2D(10, 5), Facing.Right), 5)
-    assert person == Player(Position2D(3, 5), Facing.Right)
+    person = jungle.step(Player(Position(10, 5), Facing.Right), 5)
+    assert person == Player(Position(3, 5), Facing.Right)
 
 
 def test_walk():
     lines = input.read_lines(day_num, 'example01.txt')
     jungle = PasswordSimpleJungle.create(lines)
     person = jungle.walk()
-    assert person == Player(Position2D(7, 5), Facing.Right)
+    assert person == Player(Position(7, 5), Facing.Right)
     assert person.value == 6032
 
 
@@ -102,19 +102,19 @@ def test_cube_info():
     lines = input.read_lines(day_num, 'example01.txt')
     jungle = PasswordCubeJungle.create(lines)
 
-    person = Player(Position2D(14, 8), Facing.Up)
+    person = Player(Position(14, 8), Facing.Up)
     result = jungle.get_cube_position(person)
     assert result == (CubePosition(Vector(0, 1, 0), Vector(0, 0, -1)), 2)
 
-    person = Player(Position2D(11, 5), Facing.Right)
+    person = Player(Position(11, 5), Facing.Right)
     result = jungle.get_cube_position(person)
     assert result == (CubePosition(Vector(0, 0, -1), Vector(0, 1, 0)), 1)
 
-    person = Player(Position2D(1, 7), Facing.Down)
+    person = Player(Position(1, 7), Facing.Down)
     result = jungle.get_cube_position(person)
     assert result == (CubePosition(Vector(0, 0, 1), Vector(-1, 0, 0)), 2)
 
-    person = Player(Position2D(10, 11), Facing.Down)
+    person = Player(Position(10, 11), Facing.Down)
     result = jungle.get_cube_position(person)
     assert result == (CubePosition(Vector(-1, 0, 0), Vector(0, 0, 1)), 1)
 
@@ -123,18 +123,18 @@ def test_cube_wrap():
     lines = input.read_lines(day_num, 'example01.txt')
     jungle = PasswordCubeJungle.create(lines)
 
-    person = Player(Position2D(14, 8), Facing.Up)
+    person = Player(Position(14, 8), Facing.Up)
     result = jungle.wrap(person)
-    assert result == Player(Position2D(11, 5), Facing.Left)
+    assert result == Player(Position(11, 5), Facing.Left)
 
-    person = Player(Position2D(11, 5), Facing.Right)
+    person = Player(Position(11, 5), Facing.Right)
     result = jungle.wrap(person)
-    assert result == Player(Position2D(14, 8), Facing.Down)
+    assert result == Player(Position(14, 8), Facing.Down)
 
-    person = Player(Position2D(1, 7), Facing.Down)
+    person = Player(Position(1, 7), Facing.Down)
     result = jungle.wrap(person)
-    assert result == Player(Position2D(10, 11), Facing.Up)
+    assert result == Player(Position(10, 11), Facing.Up)
 
-    person = Player(Position2D(10, 11), Facing.Down)
+    person = Player(Position(10, 11), Facing.Down)
     result = jungle.wrap(person)
-    assert result == Player(Position2D(1, 7), Facing.Up)
+    assert result == Player(Position(1, 7), Facing.Up)
