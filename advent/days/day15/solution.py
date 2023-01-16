@@ -4,21 +4,21 @@ from itertools import combinations
 
 from typing import Iterator, Self
 
-from advent.common.position import ORIGIN, Position
+from advent.common.position import Position
 
 day_num = 15
 
 
 def part1(lines: Iterator[str]) -> int:
-    row, _ = next(lines).split('/')
+    row = int(next(lines))
     sensor_map = SensorMap.parse(lines)
-    return sensor_map.count_impossible(int(row))
+    return sensor_map.count_impossible(row)
 
 
 def part2(lines: Iterator[str]) -> int:
-    _, max_range = next(lines).split('/')
+    next(lines)
     sensor_map = SensorMap.parse(lines)
-    return sensor_map.get_possible_frequency(int(max_range))
+    return sensor_map.get_possible_frequency()
 
 
 ColRange = tuple[int, int]
@@ -173,8 +173,7 @@ class SensorMap:
                                             Position(sensor2.position.x - sensor2.distance - 1,
                                                      sensor2.position.y))
 
-    def get_possible_frequency(self, max_range: int) -> int:
-        max_point = Position.splat(max_range)
+    def get_possible_frequency(self) -> int:
         midlines: list[ManhattenLine] = []
         for sensor1, sensor2 in combinations(self.sensors, 2):
             midline = SensorMap.get_midline(sensor1, sensor2)
@@ -182,9 +181,7 @@ class SensorMap:
                 midlines.append(midline)
         for line1, line2 in combinations(midlines, 2):
             point = line1.crosspoint(line2)
-            if point is not None:
-                if (point.is_within(ORIGIN, max_point)
-                        and all(not sensor.is_within(point) for sensor in self.sensors)):
-                    return SensorMap.tuning_frequency(point)
+            if point is not None and all(not sensor.is_within(point) for sensor in self.sensors):
+                return SensorMap.tuning_frequency(point)
 
         raise Exception("No point found")

@@ -46,5 +46,5 @@ def test_possible():
     next(lines)
     sensor_map = SensorMap.parse(lines)
     expected = 56000011
-    result = sensor_map.get_possible_frequency(20)
+    result = sensor_map.get_possible_frequency()
     assert result == expected
