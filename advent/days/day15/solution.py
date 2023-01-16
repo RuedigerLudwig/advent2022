@@ -1,9 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from itertools import combinations
 
 from typing import Iterator, Self
 
-from advent.common.position import Position
+from advent.common.position import ORIGIN, Position
 
 day_num = 15
 
@@ -25,25 +26,64 @@ ColRange = tuple[int, int]
 
 @dataclass(slots=True, frozen=True)
 class Sensor:
-    sensor: Position
+    number: int
+    position: Position
     distance: int
 
     @classmethod
-    def parse(cls, line: str) -> tuple[Self, Position]:
+    def parse(cls, line: str, number: int) -> tuple[Self, Position]:
         parts = line.split('=')
         sensor = Position(int(parts[1].split(',')[0].strip()), int(parts[2].split(':')[0].strip()))
         beacon = Position(int(parts[3].split(',')[0].strip()), int(parts[4].strip()))
-        return cls(sensor, sensor.taxicab_distance(beacon)), beacon
+        return cls(number, sensor, sensor.taxicab_distance(beacon)), beacon
 
     def col_range_at_row(self, row: int) -> ColRange | None:
-        col_distance = self.distance - abs(self.sensor.y - row)
+        col_distance = self.distance - abs(self.position.y - row)
         if col_distance < 0:
             return None
 
-        from_x = self.sensor.x - col_distance
-        to_x = self.sensor.x + col_distance
+        from_x = self.position.x - col_distance
+        to_x = self.position.x + col_distance
 
         return from_x, to_x
+
+    def is_within(self, position: Position) -> bool:
+        return self.position.taxicab_distance(position) <= self.distance
+
+
+@dataclass(slots=True, frozen=True)
+class ManhattenLine:
+    start: Position
+    direction_up: bool
+    steps: int
+
+    @classmethod
+    def create(cls, start: Position, end: Position) -> ManhattenLine | None:
+        if start.x > end.x:
+            start, end = end, start
+        steps_x = end.x - start.x
+        steps_y = end.y - start.y
+        if steps_x != abs(steps_y):
+            return None
+        return ManhattenLine(start, steps_y < 0, steps_x)
+
+    def crosspoint(self, other: ManhattenLine) -> Position | None:
+        if self.direction_up == other.direction_up:
+            return None
+        elif self.direction_up:
+            bottom_up, top_down = self, other
+        else:
+            bottom_up, top_down = other, self
+
+        r2 = bottom_up.start.x + bottom_up.start.y - (top_down.start.x + top_down.start.y)
+        if r2 % 2 != 0:
+            return None
+
+        r = r2 // 2
+        if r < 0 or r > top_down.steps:
+            return None
+
+        return top_down.start + Position.splat(r)
 
 
 @dataclass(slots=True, frozen=True)
@@ -55,8 +95,8 @@ class SensorMap:
     def parse(cls, lines: Iterator[str]) -> SensorMap:
         sensors: list[Sensor] = []
         beacons: set[Position] = set()
-        for line in lines:
-            sensor, beacon = Sensor.parse(line)
+        for number, line in enumerate(lines):
+            sensor, beacon = Sensor.parse(line, number)
             sensors.append(sensor)
             beacons.add(beacon)
         return cls(sensors, beacons)
@@ -83,7 +123,7 @@ class SensorMap:
                     yield current
                     current = col_range
                 else:
-                    current = current[0], col_range[1]
+                    current = ColRange((current[0], col_range[1]))
         yield current
 
     def count_impossible(self, row: int) -> int:
@@ -94,21 +134,57 @@ class SensorMap:
 
         return seen - beacons
 
-    def get_possible(self, max_range: int) -> Position:
-        for row in range(max_range):
-            col_ranges = sorted(self.get_impossible(row))
+    @classmethod
+    def tuning_frequency(cls, position: Position) -> int:
+        return position.x * 4_000_000 + position.y
 
-            curr1 = col_ranges[0][1]
-            for one0, one1 in col_ranges:
-                if curr1 < one1:
-                    if curr1 < one0:
-                        return Position(curr1 + 1, row)
-                    if one1 > max_range:
-                        break
-                    curr1 = one1
+    @classmethod
+    def get_midline(cls, sensor1: Sensor, sensor2: Sensor) -> ManhattenLine | None:
+        distance = sensor1.position.taxicab_distance(sensor2.position)
+        if distance != sensor1.distance + sensor2.distance + 2:
+            return None
 
-        raise Exception("No best spot found")
+        if sensor1.position.x == sensor2.position.x or sensor1.position.y == sensor2.position.y:
+            return None  # Don't know how to handle that now, maybe include later
+
+        if sensor1.position.x > sensor2.position.x:
+            sensor1, sensor2 = sensor2, sensor1
+
+        if sensor1.position.y < sensor2.position.y:
+            if sensor1.distance < sensor2.distance:
+                return ManhattenLine.create(Position(sensor1.position.x + sensor1.distance + 1,
+                                                     sensor1.position.y),
+                                            Position(sensor1.position.x,
+                                                     sensor1.position.y + sensor1.distance + 1))
+            else:
+                return ManhattenLine.create(Position(sensor2.position.x - sensor2.distance - 1,
+                                                     sensor2.position.y),
+                                            Position(sensor2.position.x,
+                                                     sensor2.position.y - sensor2.distance - 1))
+        else:
+            if sensor1.distance < sensor2.distance:
+                return ManhattenLine.create(Position(sensor1.position.x,
+                                                     sensor1.position.y - sensor1.distance - 1),
+                                            Position(sensor1.position.x + sensor1.distance + 1,
+                                                     sensor1.position.y))
+            else:
+                return ManhattenLine.create(Position(sensor2.position.x,
+                                                     sensor2.position.y + sensor2.distance + 1),
+                                            Position(sensor2.position.x - sensor2.distance - 1,
+                                                     sensor2.position.y))
 
     def get_possible_frequency(self, max_range: int) -> int:
-        freq_x, freq_y = self.get_possible(max_range)
-        return freq_x * 4_000_000 + freq_y
+        max_point = Position.splat(max_range)
+        midlines: list[ManhattenLine] = []
+        for sensor1, sensor2 in combinations(self.sensors, 2):
+            midline = SensorMap.get_midline(sensor1, sensor2)
+            if midline is not None:
+                midlines.append(midline)
+        for line1, line2 in combinations(midlines, 2):
+            point = line1.crosspoint(line2)
+            if point is not None:
+                if (point.is_within(ORIGIN, max_point)
+                        and all(not sensor.is_within(point) for sensor in self.sensors)):
+                    return SensorMap.tuning_frequency(point)
+
+        raise Exception("No point found")
