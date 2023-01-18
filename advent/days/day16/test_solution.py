@@ -11,7 +11,7 @@ def test_part1():
 
 
 def test_part2():
-    lines = input.read_lines(day_num, 'example01.txt')
+    lines = input.read_lines(day_num, 'input.txt')
     expected = 1707
     result = part2(lines)
     assert result == expected
