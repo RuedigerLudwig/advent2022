@@ -296,25 +296,18 @@ class Network:
         ))
         min_pressure = 0
         known: dict[str, int] = {}
-        ticks = 0
-        drop_known = 0
-        drop_pressure = 0
         while not queue.empty():
-            ticks += 1
             current = queue.get()
             if current.time == 0:
-                print(f"{ticks=} {drop_known=} {drop_pressure=} {len(known)=}")
                 return current.pressure
 
             info = current.info()
             prev_pressure = known.get(info)
             if prev_pressure is not None and prev_pressure >= current.pressure:
-                drop_known += 1
                 continue
             known[info] = current.pressure
 
             if min_pressure > current.max_potential_pressure():
-                drop_pressure += 1
                 continue
             min_pressure = max(min_pressure, current.min_potential_pressure())
             min_pressure = min_pressure
