@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import IntEnum
 from itertools import islice
 from math import prod
 from multiprocessing import Pool
 from queue import PriorityQueue
-
 from typing import Iterable, Iterator, Self
+
 from advent.parser.parser import P
 
 day_num = 19
@@ -71,51 +72,43 @@ def inc_element(elements: Elements, pos: Element) -> Elements:
     return tuple(v + 1 if num == pos else v for num, v in enumerate(elements))
 
 
+MAGIC_MATERIAL_SURPLUS = 1.2
+
+
 @dataclass(slots=True)
-class Path:
+class State:
     time: int
     material: Elements
     robots: Elements
     blueprint: Blueprint
-    path: list[Element | None]
 
     @classmethod
-    def start(cls, blueprint: Blueprint) -> Path:
-        return Path(0, (0, 0, 0, 0), (0, 0, 0, 1), blueprint, [])
+    def start(cls, blueprint: Blueprint) -> State:
+        return State(0, (0, 0, 0, 0), (0, 0, 0, 1), blueprint)
 
-    def _check(self, element: Element) -> Path | None:
+    def get_valid_production(self, element: Element) -> State | None:
         if element != Element.Geode:
-            max_needed = max(req[element] for req in self.blueprint.requirements)
+            max_needed = self.blueprint.max_needed[element]
             if self.robots[element] >= max_needed:
+                return None
+            if self.material[element] > round(max_needed * MAGIC_MATERIAL_SURPLUS):
                 return None
 
         if gt(self.material, self.blueprint.requirements[element]):
-            return Path(self.time + 1,
-                        add(sub(self.material, self.blueprint.requirements[element]), self.robots),
-                        inc_element(self.robots, element), self.blueprint, self.path + [element])
+            return State(self.time + 1,
+                         add(sub(self.material, self.blueprint.requirements[element]), self.robots),
+                         inc_element(self.robots, element), self.blueprint)
         else:
             return None
 
-    def find_next(self) -> Iterator[Path]:
-        if (path := self._check(Element.Geode)) is not None:
-            yield path
-
-        if self.blueprint.max_requirement(Element.Obsidian) >= self.material[Element.Obsidian]:
-            if (path := self._check(Element.Obsidian)) is not None:
+    def find_next(self) -> Iterator[State]:
+        for element in Element:
+            if (path := self.get_valid_production(element)) is not None:
                 yield path
 
-        if self.blueprint.max_requirement(Element.Clay) >= self.material[Element.Clay]:
-            if (path := self._check(Element.Clay)) is not None:
-                yield path
+        yield State(self.time + 1, add(self.material, self.robots), self.robots, self.blueprint)
 
-        if self.blueprint.max_requirement(Element.Ore) >= self.material[Element.Ore]:
-            if (path := self._check(Element.Ore)) is not None:
-                yield path
-
-        yield Path(self.time + 1, add(self.material, self.robots), self.robots, self.blueprint,
-                   self.path + [None])
-
-    def __lt__(self, other: Path) -> bool:
+    def __lt__(self, other: State) -> bool:
         if self.time != other.time:
             return self.time < other.time
         return self.material > other.material
@@ -125,6 +118,7 @@ class Path:
 class Blueprint:
     number: int
     requirements: tuple[Elements, Elements, Elements, Elements]
+    max_needed: Elements
 
     @classmethod
     def create(cls, number: int, ore: int, clay: int,
@@ -135,18 +129,16 @@ class Blueprint:
             (0, 0, 0, clay),
             (0, 0, 0, ore),
         )
-        return Blueprint(number, requirements)
+        max_needed = (0, geode[1], obsidian[1], max(geode[0], obsidian[0], clay, ore))
+        return Blueprint(number, requirements, max_needed)
 
     @classmethod
     def parse(cls, line: str) -> Self:
         return blueprint_parser.parse(line).get()
 
-    def max_requirement(self, element: Element) -> int:
-        return round(max(requirement[element] for requirement in self.requirements) * 1.2)
-
     def run(self, rounds: int) -> int:
-        queue: PriorityQueue[Path] = PriorityQueue()
-        queue.put(Path.start(self))
+        queue: PriorityQueue[State] = PriorityQueue()
+        queue.put(State.start(self))
         seen: dict[tuple[Elements, int], Elements] = {}
         while not queue.empty():
             current = queue.get()

@@ -4,7 +4,6 @@ from .solution import Blueprint, day_num, part1, part2
 import pytest
 
 
-@pytest.mark.skip
 def test_part1():
     lines = input.read_lines(day_num, 'example01.txt')
     expected = 33
@@ -23,11 +22,11 @@ def test_part2():
 def test_parse():
     lines = input.read_lines(day_num, 'example01.txt')
     blueprint = Blueprint.parse(next(lines))
-    expected = Blueprint(1, ((0, 7, 0, 2), (0, 0, 14, 3), (0, 0, 0, 2), (0, 0, 0, 4)))
+    expected = Blueprint(1, ((0, 7, 0, 2), (0, 0, 14, 3),
+                         (0, 0, 0, 2), (0, 0, 0, 4)), (0, 7, 14, 4))
     assert blueprint == expected
 
 
-@pytest.mark.skip
 def test_blueprint1():
     lines = input.read_lines(day_num, 'example01.txt')
     blueprint = Blueprint.parse(next(lines))
