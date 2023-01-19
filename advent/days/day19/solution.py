@@ -3,21 +3,35 @@ from dataclasses import dataclass
 from enum import IntEnum
 from itertools import islice
 from math import prod
+from multiprocessing import Pool
 from queue import PriorityQueue
 
-from typing import Iterator, Self
+from typing import Iterable, Iterator, Self
 from advent.parser.parser import P
 
 day_num = 19
 
 
 def part1(lines: Iterator[str]) -> int:
-    return sum(blueprint.number * blueprint.run(24)
-               for blueprint in (Blueprint.parse(line) for line in lines))
+    return sum(bp.number * geodes for bp, geodes in Processor.pool_it(24, lines))
 
 
 def part2(lines: Iterator[str]) -> int:
-    return prod(Blueprint.parse(line).run(32) for line in islice(lines, 3))
+    return prod(num for _, num in Processor.pool_it(32, islice(lines, 3)))
+
+
+@dataclass(slots=True, frozen=True)
+class Processor:
+    rounds: int
+
+    @classmethod
+    def pool_it(cls, rounds: int, lines: Iterator[str]) -> Iterable[tuple[Blueprint, int]]:
+        with Pool() as p:
+            return p.map(Processor(rounds), lines)
+
+    def __call__(self, line: str) -> tuple[Blueprint, int]:
+        blueprint = Blueprint.parse(line)
+        return blueprint, blueprint.run(self.rounds)
 
 
 number_parser = P.second(P.string("Blueprint "), P.unsigned())
@@ -53,7 +67,7 @@ def sub(first: Elements, second: Elements) -> Elements:
     return Elements(tuple(v1 - v2 for v1, v2 in zip(first, second)))
 
 
-def inc_tuple(elements: Elements, pos: Element) -> Elements:
+def inc_element(elements: Elements, pos: Element) -> Elements:
     return tuple(v + 1 if num == pos else v for num, v in enumerate(elements))
 
 
@@ -70,25 +84,34 @@ class Path:
         return Path(0, (0, 0, 0, 0), (0, 0, 0, 1), blueprint, [])
 
     def _check(self, element: Element) -> Path | None:
+        if element != Element.Geode:
+            max_needed = max(req[element] for req in self.blueprint.requirements)
+            if self.robots[element] >= max_needed:
+                return None
+
         if gt(self.material, self.blueprint.requirements[element]):
             return Path(self.time + 1,
                         add(sub(self.material, self.blueprint.requirements[element]), self.robots),
-                        inc_tuple(self.robots, element), self.blueprint, self.path + [element])
+                        inc_element(self.robots, element), self.blueprint, self.path + [element])
         else:
             return None
 
     def find_next(self) -> Iterator[Path]:
         if (path := self._check(Element.Geode)) is not None:
             yield path
+
         if self.blueprint.max_requirement(Element.Obsidian) >= self.material[Element.Obsidian]:
             if (path := self._check(Element.Obsidian)) is not None:
                 yield path
+
         if self.blueprint.max_requirement(Element.Clay) >= self.material[Element.Clay]:
             if (path := self._check(Element.Clay)) is not None:
                 yield path
+
         if self.blueprint.max_requirement(Element.Ore) >= self.material[Element.Ore]:
             if (path := self._check(Element.Ore)) is not None:
                 yield path
+
         yield Path(self.time + 1, add(self.material, self.robots), self.robots, self.blueprint,
                    self.path + [None])
 
@@ -127,8 +150,8 @@ class Blueprint:
         seen: dict[tuple[Elements, int], Elements] = {}
         while not queue.empty():
             current = queue.get()
-            if ((current.robots, current.time) in seen
-                    and gt(seen[(current.robots, current.time)], current.material)):
+            last_seen = seen.get((current.robots, current.time))
+            if last_seen is not None and gt(last_seen, current.material):
                 continue
             seen[(current.robots, current.time)] = current.material
 
