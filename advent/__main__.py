@@ -31,13 +31,17 @@ def get_day(day_num: int) -> Day:
 
 def run(day: Day, part: int) -> float:
     data = input.read_lines(day.day_num, 'input.txt')
-    t0 = time.time()
+    start_time = time.time()
     match part:
         case 1: result = day.part1(data)
         case 2: result = day.part2(data)
         case _: raise Exception(f'Unknown part {part}')
-    t1 = time.time()
-    delta = t1 - t0
+
+    if result is None:
+        return 0.0
+
+    end_time = time.time()
+    delta = end_time - start_time
     output(day.day_num, part, result, delta)
     return delta
 
@@ -75,7 +79,7 @@ def main() -> None:
     match sys.argv:
         case [_]:
             try:
-                for day_num in range(1, 25):
+                for day_num in range(1, 26):
                     day = get_day(day_num)
                     if day_num == day.day_num:
                         time += run(day, 1)

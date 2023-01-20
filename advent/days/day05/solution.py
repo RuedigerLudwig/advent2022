@@ -1,9 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from typing import ClassVar, Iterator, Self
-
-from advent.parser.parser import P
+from typing import Iterator, Self
 
 day_num = 5
 
@@ -26,18 +24,13 @@ class Move:
     frm: int
     to: int
 
-    amount_parser: ClassVar[P[int]] = P.second(P.string("move "), P.unsigned())
-    from_parser: ClassVar[P[int]] = P.second(P.string(" from "), P.unsigned())
-    to_parser: ClassVar[P[int]] = P.second(P.string(" to "), P.unsigned())
-    move_parser: ClassVar[P[tuple[int, int, int]]] = P.seq(amount_parser, from_parser, to_parser)
-
     @classmethod
-    def parse(cls, line: str) -> Self | None:
-        parsed = cls.move_parser.parse(line)
-        if parsed.is_fail():
-            return None
-        amount, frm, to = parsed.get()
-        return cls(amount, frm - 1, to - 1)
+    def parse(cls, line: str) -> Self:
+        match line.split():
+            case ['move', amount, 'from', frm, 'to', to]:
+                return cls(int(amount), int(frm) - 1, int(to) - 1)
+            case _:
+                raise Exception("Not a valid move")
 
     def do_move(self, crates: list[str], as_9001: bool) -> list[str]:
         """
@@ -58,21 +51,23 @@ class Crane:
     moves: list[Move]
     is_9001: bool
 
-    crate_parser: ClassVar[P[str | None]] = P.either(
-        P.any_char().in_brackets(), P.string("   ").replace(None))
-    crate_row_parser: ClassVar[P[list[str | None]]] = crate_parser.sep_by(P.char(' '))
-
     @classmethod
-    def parse_crate_row(cls, line: str) -> list[None | str] | None:
-        return Crane.crate_row_parser.parse(line).get_or(None)
+    def parse_crate_row(cls, line: str) -> list[None | str]:
+        result: list[str | None] = []
+        for c in line[1::4]:
+            if c.isalnum():
+                result.append(c)
+            else:
+                result.append(None)
+        return result
 
     @classmethod
     def parse_stacks(cls, lines: Iterator[str]) -> list[str]:
         stacks: list[str] = []
         for line in lines:
-            crate_row = Crane.parse_crate_row(line)
-            if crate_row is None:
+            if not line:
                 return stacks
+            crate_row = Crane.parse_crate_row(line)
 
             if len(stacks) < len(crate_row):
                 stacks += [""] * (len(crate_row) - len(stacks))
@@ -86,7 +81,7 @@ class Crane:
     @classmethod
     def parse(cls, lines: Iterator[str], is_9001: bool) -> Self:
         drawing = cls.parse_stacks(lines)
-        moves = [p for p in (Move.parse(line) for line in lines) if p is not None]
+        moves = [Move.parse(line) for line in lines]
         return cls(drawing, moves, is_9001)
 
     @classmethod

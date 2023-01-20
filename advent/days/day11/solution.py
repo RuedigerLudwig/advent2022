@@ -2,9 +2,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from math import prod
+import re
 
 from typing import Callable, Iterator, Self
-from advent.parser.parser import P
 
 day_num = 11
 
@@ -21,42 +21,14 @@ def part2(lines: Iterator[str]) -> int:
     return horde.inspected_result()
 
 
-def worry_increaser(op: str, value: int | str) -> WorryIncreaser:
-    match (op, value):
-        case '*', int(v): return lambda old: old * v
-        case '*', 'old': return lambda old: old ** 2
-        case '+', int(v): return lambda old: old + v
-        case '+', 'old': return lambda old: 2 * old
-        case _: raise Exception(f"Illegal line: {op} {value}")
-
-
-class Parser:
-    """ All the parsers needed for this solution """
-    worry_inc: P[WorryIncreaser] = P.second(
-        P.tstring("Operation: new = old"),
-        P.map2(P.one_of('+*'), P.either(P.tstring('old'), P.tsigned()),
-               worry_increaser)).tline()
-    monkey_number: P[int] = P.unsigned().between(P.tstring('Monkey'), P.tchar(':')).tline()
-    items: P[list[int]] = P.second(
-        P.tstring('Starting items:'), P.unsigned().sep_by(sep=P.tchar(','))).tline()
-    modulo: P[int] = P.second(
-        P.tstring("Test: divisible by"), P.unsigned()).tline()
-    throw_parser: P[int] = P.second(
-        P.seq(
-            P.tstring("If"),
-            P.either(P.tstring("true"), P.tstring("false")),
-            P.tstring(": throw to monkey")),
-        P.unsigned()).tline()
-    test: P[tuple[int, int, int]] = P.seq(
-        modulo, throw_parser, throw_parser)
-    monkey: P[Monkey] = P.map4(monkey_number, items,
-                               worry_inc, test,
-                               lambda number, items, worry_inc, test:
-                               Monkey(number, items, worry_inc, *test))
-    monkey_list: P[list[Monkey]] = P.second(P.eol().optional(), monkey).many()
-
-
 WorryIncreaser = Callable[[int], int]
+
+
+def match_raise(pattern: str, string: str) -> re.Match[str]:
+    result = re.match(pattern, string)
+    if result is None:
+        raise Exception("Pattern did not match")
+    return result
 
 
 @dataclass(slots=True)
@@ -68,6 +40,31 @@ class Monkey:
     target_if_divides: int
     catcher_if_not_divides: int
     inspected: int = field(default=0, compare=False)
+
+    @classmethod
+    def parse(cls, lines: Iterator[str]) -> Monkey:
+        re_number = match_raise(r"Monkey (?P<number>\d+):", next(lines))
+        number = int(re_number.group('number'))
+        starting = next(lines).split(":")
+        items = list(int(item.strip()) for item in starting[1].split(","))
+        s_operation = next(lines).split('=')
+        match s_operation[1].split():
+            case ['old', '*', 'old']:
+                operation: WorryIncreaser = lambda old: old ** 2
+            case ['old', '*', num]:
+                number = int(num)
+                operation: WorryIncreaser = lambda old: old * number
+            case ['old', '+', num]:
+                number = int(num)
+                operation: WorryIncreaser = lambda old: old + number
+            case _: raise Exception("Illegal operation")
+        s_modulo = next(lines).split("by")
+        modulo = int(s_modulo[1].strip())
+        s_if_true = next(lines).split("monkey")
+        if_true = int(s_if_true[1])
+        s_if_false = next(lines).split("monkey")
+        if_false = int(s_if_false[1])
+        return Monkey(number, items, operation, modulo, if_true, if_false)
 
     def inspect_items(self, worry_decrease: int | None) -> Iterator[tuple[int, int]]:
         for item in self.items:
@@ -93,6 +90,15 @@ class Monkey:
 class Troop(ABC):
     monkeys: list[Monkey]
 
+    @classmethod
+    def parse_monkeys(cls, lines: Iterator[str]) -> Iterator[Monkey]:
+        while True:
+            try:
+                yield Monkey.parse(lines)
+                next(lines)
+            except StopIteration:
+                return
+
     @abstractmethod
     def single_round(self):
         ...
@@ -108,11 +114,9 @@ class Troop(ABC):
 
 @dataclass(slots=True)
 class Troop_While_Worried(Troop):
-    """ The """
     @classmethod
     def parse(cls, lines: Iterator[str]) -> Self:
-        monkeys = Parser.monkey_list.parse(lines).get()
-        return Troop_While_Worried(monkeys)
+        return Troop_While_Worried(list(Troop.parse_monkeys(lines)))
 
     def single_round(self):
         for currentMonkey in self.monkeys:
@@ -126,7 +130,7 @@ class Troop_While_Kinda_Relieved(Troop):
 
     @classmethod
     def parse(cls, lines: Iterator[str]) -> Self:
-        monkeys = Parser.monkey_list.parse(lines).get()
+        monkeys = list(Troop.parse_monkeys(lines))
         return Troop_While_Kinda_Relieved(monkeys, prod(monkey.modulator for monkey in monkeys))
 
     def single_round(self):

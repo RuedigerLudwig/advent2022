@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from itertools import product
 from queue import PriorityQueue
+import re
 
 from typing import Iterator, Literal, NamedTuple, Self
-from advent.parser.parser import P
 
 day_num = 16
 
@@ -20,30 +20,29 @@ def part2(lines: Iterator[str]) -> int:
     return system.under_pressure(26, 2)
 
 
-valve_parser = P.map3(
-    P.second(P.string("Valve "), P.upper().word()),
-    P.second(P.string(" has flow rate="), P.unsigned()),
-    P.second(P.either(P.string("; tunnels lead to valves "), P.string("; tunnel leads to valve ")),
-             P.upper().word().sep_by(P.string(", "))),
-    lambda name, flow_rate, following: RawValve(name, flow_rate, following)
-)
+pattern = re.compile(r"Valve (?P<name>[a-zA-Z]+)[^=]+=(?P<flow_rate>\d+).+valves? (?P<exits>.*)")
 
 
 class RawValve(NamedTuple):
     name: str
     flow_rate: int
-    following: list[str]
+    exits: list[str]
 
     @classmethod
     def parse(cls, line: str) -> Self:
-        return valve_parser.parse(line).get()
+        result = pattern.match(line)
+        if not result:
+            raise Exception("Not a valid valve")
+        return RawValve(result.group('name'),
+                        int(result.group('flow_rate')),
+                        result.group('exits').split(', '))
 
 
 @dataclass(slots=True)
 class Valve:
     name: str
     flow_rate: int
-    following: list[Valve]
+    exits: list[Valve]
     paths: dict[str, int] = field(default_factory=dict, init=False)
 
     def __eq__(self, other: object) -> bool:
@@ -58,7 +57,7 @@ class Valve:
         return self.name < other.name
 
     def __repr__(self) -> str:
-        return f"{self.name}:{self.flow_rate}->{','.join(v.name for v in self.following)}"
+        return f"{self.name}:{self.flow_rate}->{','.join(v.name for v in self.exits)}"
 
     def travel_time(self, to: str) -> int:
         return self.paths[to]
@@ -71,7 +70,7 @@ class Valve:
             to_check = to_check[1:]
 
             paths[current.name] = steps, (current.flow_rate > 0)
-            for next in current.following:
+            for next in current.exits:
                 known_path, _ = paths.get(next.name, (steps + 2, False))
                 if known_path > steps + 1:
                     to_check.append((next, steps + 1))
@@ -281,8 +280,8 @@ class Network:
         valves = {valve.name: Valve(valve.name, valve.flow_rate, []) for valve in raw_system}
         for raw in raw_system:
             current = valves[raw.name]
-            for follow in raw.following:
-                current.following.append(valves[follow])
+            for follow in raw.exits:
+                current.exits.append(valves[follow])
 
         return Network(valves)
 

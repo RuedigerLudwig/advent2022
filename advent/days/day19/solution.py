@@ -6,9 +6,9 @@ from itertools import islice
 from math import prod
 from multiprocessing import Pool
 from queue import PriorityQueue
+import re
 from typing import Iterable, Iterator, Self
 
-from advent.parser.parser import P
 
 day_num = 19
 
@@ -33,17 +33,6 @@ class Processor:
     def __call__(self, line: str) -> tuple[Blueprint, int]:
         blueprint = Blueprint.parse(line)
         return blueprint, blueprint.run(self.rounds)
-
-
-number_parser = P.second(P.string("Blueprint "), P.unsigned())
-ore_parser = P.second(P.string(": Each ore robot costs "), P.unsigned())
-clay_parser = P.second(P.string(" ore. Each clay robot costs "), P.unsigned())
-tuple_parser = P.seq(P.unsigned(), P.second(P.string(" ore and "), P.unsigned()))
-obsidian_parser = P.second(P.string(" ore. Each obsidian robot costs "), tuple_parser)
-geode_parser = P.second(P.string(" clay. Each geode robot costs "), tuple_parser)
-blueprint_parser = P.map5(number_parser, ore_parser, clay_parser, obsidian_parser, geode_parser,
-                          lambda number, ore, clay, obsidian, geode:
-                          Blueprint.create(number, ore, clay, obsidian, geode))
 
 
 class Element(IntEnum):
@@ -114,6 +103,15 @@ class State:
         return self.material > other.material
 
 
+r_number = r"Blueprint (?P<number>\d+):"
+r_ore = r".*(?P<ore_ore>\d+) ore."
+r_clay = r".*(?P<clay_ore>\d+) ore."
+r_obsidian = r".*(?P<obsidian_ore>\d+) ore and (?P<obsidian_clay>\d+) clay."
+r_geode = r".*(?P<geode_ore>\d+) ore and (?P<geode_obsidian>\d+) obsidian."
+
+pattern = re.compile(r_number + r_ore + r_clay + r_obsidian + r_geode)
+
+
 @dataclass(slots=True)
 class Blueprint:
     number: int
@@ -134,7 +132,16 @@ class Blueprint:
 
     @classmethod
     def parse(cls, line: str) -> Self:
-        return blueprint_parser.parse(line).get()
+        result = pattern.match(line)
+        if result is None:
+            raise Exception("Not a valid Blueprint")
+        return Blueprint.create(
+            number=int(result.group('number')),
+            ore=int(result.group('ore_ore')),
+            clay=int(result.group('clay_ore')),
+            obsidian=(int(result.group('obsidian_ore')), int(result.group('obsidian_clay'))),
+            geode=(int(result.group('geode_ore')), int(result.group('geode_obsidian'))),
+        )
 
     def run(self, rounds: int) -> int:
         queue: PriorityQueue[State] = PriorityQueue()

@@ -48,7 +48,7 @@ def test_parse_move():
 def test_parse_all():
     data = input.read_lines(day_num, 'example01.txt')
     expected = Crane(
-        ["ZN", "MCD", "P"],
+        ["1ZN", "2MCD", "3P"],
         [Move(1, 1, 0), Move(3, 0, 2), Move(2, 1, 0), Move(1, 0, 1)], True)
     result = Crane.parse(data, True)
     assert result == expected
