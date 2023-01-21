@@ -27,7 +27,7 @@ class Map:
         map = list(input)
         width = len(map[0])
         height = len(map)
-        return Map(map, Position(width, height))
+        return Map(map, Position(width - 1, height - 1))
 
     def can_climb(self, *, from_pos: Position, to_pos: Position) -> bool:
         """ Checks if one gan walk from the elevation at from_pos to the elevation at to_pos """

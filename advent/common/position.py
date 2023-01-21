@@ -12,7 +12,7 @@ class Position:
     @classmethod
     def splat(cls, value: int) -> Position:
         """ Creates a Position with two equal values """
-        return Position(value, value)
+        return cls(value, value)
 
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
@@ -79,10 +79,9 @@ class Position:
     def is_within(self, top_left: Position, bottom_right: Position) -> bool:
         """
         Checks if this point is within the rectangle spanned by the given positions.
-        bottom_right is considered to be the first point outside the spanned rectangle.
         Behavior is undefined if top_left and bottom_right are not in the correct order.
         """
-        return top_left.x <= self.x < bottom_right.x and top_left.y <= self.y < bottom_right.y
+        return top_left.x <= self.x <= bottom_right.x and top_left.y <= self.y <= bottom_right.y
 
     def taxicab_distance(self, other: Position | None = None) -> int:
         """
@@ -93,6 +92,29 @@ class Position:
             return abs(self.x) + abs(self.y)
         else:
             return abs(self.x - other.x) + abs(self.y - other.y)
+
+    def component_min(self, *others: Position) -> Position:
+        best = self
+        for next in others:
+            best = Position(min(best.x, next.x), min(best.y, next.y))
+            if best.x <= next.x and best.y <= next.y:
+                pass
+            elif best.x >= next.x and best.y >= next.y:
+                best = next
+            else:
+                best = Position(min(best.x, next.x), min(best.y, next.y))
+        return best
+
+    def component_max(self, *others: Position) -> Position:
+        best = self
+        for next in others:
+            if best.x >= next.x and best.y >= next.y:
+                pass
+            elif best.x <= next.x and best.y <= next.y:
+                best = next
+            else:
+                best = Position(max(best.x, next.x), max(best.y, next.y))
+        return best
 
 
 ORIGIN = Position.splat(0)
