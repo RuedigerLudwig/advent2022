@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from itertools import count, cycle
 
-from typing import Iterator
+from typing import Iterable, Iterator
 
 from advent.common.position import Position
 
@@ -57,7 +57,8 @@ class Ground:
             result += '\n'
         return result[:-1]
 
-    def count_adjacent(self, elves: dict[Position, int],
+    @classmethod
+    def check_adjacent(cls, elves: Iterable[Position],
                        position: Position) -> list[Direction] | None:
         north = False
         south = False
@@ -118,36 +119,30 @@ class Ground:
         return Ground(map)
 
     def extent(self) -> tuple[Position, Position]:
-        it = iter(self.map)
-        min_pos = next(it)
-        max_pos = min_pos
-        for elf in it:
-            min_pos = min_pos.component_min(elf)
-            max_pos = max_pos.component_max(elf)
-        return min_pos, max_pos
+        return Position.component_min(*self.map), Position.component_max(*self.map)
 
-    def rounds(self, number: int | None) -> int | None:
+    def rounds(self, max_rounds: int | None) -> int | None:
         start_dispenser = cycle(iter(Direction))
-        if number is None:
+        if max_rounds is None:
             it = count(1)
         else:
-            it = range(1, number + 1)
+            it = range(1, max_rounds + 1)
 
-        elves = {position: -1 for position in self.map}
+        elves = {position: 0 for position in self.map}
 
-        min_moved, max_moved = self.extent()
+        min_position, max_position = self.extent()
 
-        for n in it:
-            min_moved = min_moved + Position(-2, -2)
-            max_moved = max_moved + Position(2, 2)
+        for round in it:
+            min_position = min_position + Position(-1, -1)
+            max_position = max_position + Position(1, 1)
             start = next(start_dispenser)
-            target_map: dict[Position, Position] = {}
+            proposals: dict[Position, Position] = {}
             for from_pos, last_moved in elves.items():
-                if last_moved + 4 <= n:
-                    if not from_pos.is_within(min_moved, max_moved):
+                if last_moved + 4 < round:
+                    if not from_pos.is_within(min_position, max_position):
                         continue
 
-                adjacent = self.count_adjacent(elves, from_pos)
+                adjacent = self.check_adjacent(elves, from_pos)
                 if adjacent is None:
                     continue
 
@@ -156,30 +151,29 @@ class Ground:
                     if next_direction in adjacent:
                         next_direction = next_direction.next()
                     else:
-                        target = next_direction.walk(from_pos)
-                        if target not in target_map:
-                            target_map[target] = from_pos
+                        to_pos = next_direction.walk(from_pos)
+                        if to_pos not in proposals:
+                            proposals[to_pos] = from_pos
                         else:
-                            del target_map[target]
+                            del proposals[to_pos]
                         break
 
-            changed = False
+            if not proposals:
+                self.map = set(elves)
+                return round
+
             first = True
-            for to_pos, from_pos in target_map.items():
-                changed = True
+            for to_pos, from_pos in proposals.items():
                 del elves[from_pos]
-                elves[to_pos] = n
+                elves[to_pos] = round
+
                 if first:
-                    max_moved = to_pos
-                    min_moved = to_pos
+                    max_position = Position.component_max(to_pos, from_pos)
+                    min_position = Position.component_min(to_pos, from_pos)
                     first = False
                 else:
-                    max_moved = max_moved.component_max(to_pos, from_pos)
-                    min_moved = min_moved.component_min(to_pos, from_pos)
+                    max_position = Position.component_max(max_position, to_pos, from_pos)
+                    min_position = Position.component_min(min_position, to_pos, from_pos)
 
-            if not changed:
-                self.map = {elf for elf in elves}
-                return n
-
-        self.map = {elf for elf in elves}
+        self.map = set(elves)
         return None

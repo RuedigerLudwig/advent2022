@@ -93,27 +93,40 @@ class Position:
         else:
             return abs(self.x - other.x) + abs(self.y - other.y)
 
-    def component_min(self, *others: Position) -> Position:
-        best = self
-        for next in others:
-            best = Position(min(best.x, next.x), min(best.y, next.y))
-            if best.x <= next.x and best.y <= next.y:
+    @classmethod
+    def component_min(cls, *positions: Position) -> Position:
+        """
+        Returns the position with the minimal value for each component
+        Basically this gives the top left corner of the square that
+        includes all given positions
+        """
+        it = iter(positions)
+        best = next(it)
+        for pos in it:
+            if best.x <= pos.x and best.y <= pos.y:
                 pass
-            elif best.x >= next.x and best.y >= next.y:
-                best = next
+            elif best.x >= pos.x and best.y >= pos.y:
+                best = pos
             else:
-                best = Position(min(best.x, next.x), min(best.y, next.y))
+                best = Position(min(best.x, pos.x), min(best.y, pos.y))
         return best
 
-    def component_max(self, *others: Position) -> Position:
-        best = self
-        for next in others:
-            if best.x >= next.x and best.y >= next.y:
+    @classmethod
+    def component_max(cls, *positions: Position) -> Position:
+        """
+        Returns the position with the maximum value for each component
+        Basically this gives the bottom right corner of the square that
+        includes all given positions
+        """
+        it = iter(positions)
+        best = next(it)
+        for pos in it:
+            if best.x >= pos.x and best.y >= pos.y:
                 pass
-            elif best.x <= next.x and best.y <= next.y:
-                best = next
+            elif best.x <= pos.x and best.y <= pos.y:
+                best = pos
             else:
-                best = Position(max(best.x, next.x), max(best.y, next.y))
+                best = Position(max(best.x, pos.x), max(best.y, pos.y))
         return best
 
 
