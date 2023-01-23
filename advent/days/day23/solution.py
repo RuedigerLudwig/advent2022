@@ -143,7 +143,7 @@ class Ground:
             proposals: dict[Position, Position] = {}
             touched: set[Position] = set()
             for from_pos, last_touched in elves.items():
-                if last_touched + 4 < round:
+                if last_touched + 4 <= round:
                     continue
 
                 found = False
