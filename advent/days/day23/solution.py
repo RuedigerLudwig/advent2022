@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from itertools import count, cycle
 
-from typing import Iterable, Iterator
+from typing import Iterator
 
 from advent.common.position import Position
 
@@ -58,52 +58,33 @@ class Ground:
         return result[:-1]
 
     @classmethod
-    def check_adjacent(cls, elves: Iterable[Position],
-                       position: Position) -> list[Direction] | None:
-        north = False
-        south = False
-        west = False
-        east = False
-
-        if (position + Position(-1, -1)) in elves:
-            north = True
-            west = True
-        if (position + Position(1, 1)) in elves:
-            south = True
-            east = True
-
-        if north is False:
-            north = (position + Position(0, -1)) in elves
-        if south is False:
-            south = (position + Position(0, 1)) in elves
-        if west is False:
-            west = (position + Position(-1, 0)) in elves
-        if east is False:
-            east = (position + Position(1, 0)) in elves
-
-        if north is False or east is False:
-            if (position + Position(1, -1)) in elves:
-                north = True
-                east = True
-        if south is False or west is False:
-            if (position + Position(-1, 1)) in elves:
-                south = True
-                west = True
-
-        if north == south == east == west:
-            return None
-
-        adjacent: list[Direction] = []
-        if north:
-            adjacent.append(Direction.North)
-        if south:
-            adjacent.append(Direction.South)
-        if west:
-            adjacent.append(Direction.West)
-        if east:
-            adjacent.append(Direction.East)
-
-        return adjacent
+    def has_neighbor(cls, elves: dict[Position, int],
+                     position: Position, direction: Direction) -> bool:
+        match direction:
+            case Direction.North:
+                return (
+                    Position(position.x - 1, position.y - 1) in elves
+                    or Position(position.x, position.y - 1) in elves
+                    or Position(position.x + 1, position.y - 1) in elves
+                )
+            case Direction.South:
+                return (
+                    Position(position.x - 1, position.y + 1) in elves
+                    or Position(position.x, position.y + 1) in elves
+                    or Position(position.x + 1, position.y + 1) in elves
+                )
+            case Direction.West:
+                return (
+                    Position(position.x - 1, position.y - 1) in elves
+                    or Position(position.x - 1, position.y) in elves
+                    or Position(position.x - 1, position.y + 1) in elves
+                )
+            case Direction.East:
+                return (
+                    Position(position.x + 1, position.y - 1) in elves
+                    or Position(position.x + 1, position.y) in elves
+                    or Position(position.x + 1, position.y + 1) in elves
+                )
 
     def count_empty(self) -> int:
         min_pos, max_pos = self.extent()
@@ -121,6 +102,33 @@ class Ground:
     def extent(self) -> tuple[Position, Position]:
         return Position.component_min(*self.map), Position.component_max(*self.map)
 
+    @classmethod
+    def minmax(cls, first: int, second: int) -> tuple[int, int]:
+        return (first, second) if first <= second else (second, first)
+
+    @classmethod
+    def pair_neighbors(cls, from_pos: Position, to_pos: Position) -> Iterator[Position]:
+        if from_pos.x == to_pos.x:
+            mn, mx = Ground.minmax(from_pos.y, to_pos.y)
+            yield Position(from_pos.x - 1, mn - 1)
+            yield Position(from_pos.x, mn - 1)
+            yield Position(from_pos.x + 1, mn - 1)
+            yield Position(from_pos.x - 1, from_pos.y)
+            yield Position(from_pos.x + 1, from_pos.y)
+            yield Position(from_pos.x - 1, mx + 1)
+            yield Position(from_pos.x, mx + 1)
+            yield Position(from_pos.x + 1, mx + 1)
+        else:
+            mn, mx = Ground.minmax(from_pos.x, to_pos.x)
+            yield Position(mn - 1, from_pos.y - 1)
+            yield Position(mn - 1, from_pos.y)
+            yield Position(mn - 1, from_pos.y + 1)
+            yield Position(from_pos.x, from_pos.y - 1)
+            yield Position(from_pos.x, from_pos.y + 1)
+            yield Position(mx + 1, from_pos.y - 1)
+            yield Position(mx + 1, from_pos.y)
+            yield Position(mx + 1, from_pos.y + 1)
+
     def rounds(self, max_rounds: int | None) -> int | None:
         start_dispenser = cycle(iter(Direction))
         if max_rounds is None:
@@ -130,50 +138,54 @@ class Ground:
 
         elves = {position: 0 for position in self.map}
 
-        min_position, max_position = self.extent()
-
         for round in it:
-            min_position = min_position + Position(-1, -1)
-            max_position = max_position + Position(1, 1)
             start = next(start_dispenser)
             proposals: dict[Position, Position] = {}
-            for from_pos, last_moved in elves.items():
-                if last_moved + 4 < round:
-                    if not from_pos.is_within(min_position, max_position):
-                        continue
+            touched: set[Position] = set()
+            for from_pos, last_touched in elves.items():
+                if last_touched + 4 < round:
+                    continue
 
-                adjacent = self.check_adjacent(elves, from_pos)
-                if adjacent is None:
+                found = False
+                for neighbor in from_pos.all_neighbors():
+                    if neighbor in elves:
+                        found = True
+                        break
+
+                if not found:
                     continue
 
                 next_direction = start
-                while True:
-                    if next_direction in adjacent:
-                        next_direction = next_direction.next()
-                    else:
-                        to_pos = next_direction.walk(from_pos)
-                        if to_pos not in proposals:
-                            proposals[to_pos] = from_pos
-                        else:
-                            del proposals[to_pos]
+                found = True
+                while Ground.has_neighbor(elves, from_pos, next_direction):
+                    next_direction = next_direction.next()
+                    if next_direction == start:
+                        found = False
                         break
+
+                if found:
+                    to_pos = next_direction.walk(from_pos)
+                    old_from = proposals.pop(to_pos, None)
+                    if old_from is None:
+                        proposals[to_pos] = from_pos
+                    else:
+                        touched.add(from_pos)
+                        touched.add(old_from)
 
             if not proposals:
                 self.map = set(elves)
                 return round
 
-            first = True
             for to_pos, from_pos in proposals.items():
-                del elves[from_pos]
                 elves[to_pos] = round
+                del elves[from_pos]
 
-                if first:
-                    max_position = Position.component_max(to_pos, from_pos)
-                    min_position = Position.component_min(to_pos, from_pos)
-                    first = False
-                else:
-                    max_position = Position.component_max(max_position, to_pos, from_pos)
-                    min_position = Position.component_min(min_position, to_pos, from_pos)
+                for neighbor in Ground.pair_neighbors(from_pos, to_pos):
+                    if neighbor in elves:
+                        elves[neighbor] = round
+
+            for touched_pos in touched:
+                elves[touched_pos] = round
 
         self.map = set(elves)
         return None

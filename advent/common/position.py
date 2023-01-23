@@ -76,6 +76,16 @@ class Position:
         yield self.left()
         yield self.down()
 
+    def all_neighbors(self) -> Iterator[Position]:
+        yield Position(self.x + 1, self.y)
+        yield Position(self.x + 1, self.y - 1)
+        yield Position(self.x, self.y - 1)
+        yield Position(self.x - 1, self.y - 1)
+        yield Position(self.x - 1, self.y)
+        yield Position(self.x - 1, self.y + 1)
+        yield Position(self.x, self.y + 1)
+        yield Position(self.x + 1, self.y + 1)
+
     def is_within(self, top_left: Position, bottom_right: Position) -> bool:
         """
         Checks if this point is within the rectangle spanned by the given positions.
